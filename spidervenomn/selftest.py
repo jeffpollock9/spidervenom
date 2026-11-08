@@ -40,6 +40,7 @@ def bot_controls(world, frame, target=None):
     c.alt_pressed = frame % 140 == 0
     c.alt_held = frame % 140 < 30
     c.reload_pressed = frame % 300 == 0
+    c.ult_pressed = frame % 400 == 399
     return c
 
 
@@ -129,6 +130,60 @@ def run(shots_dir=None):
             except Exception as e:
                 failures.append(f"{city['id']}/{hk}: {e!r}")
                 traceback.print_exc()
+
+    # Venom's symbiote blast clears every enemy on screen
+    w = World(0, "venom", audio)
+    for f in range(30):
+        w.update(Controls(), DT)
+    view = pygame.Rect(int(w.cam_x), 0, WIDTH, HEIGHT)
+    for k in range(4):
+        w.spawn_enemy("walker", w.player.body.x + 150 + k * 120, GROUND_ROW * TILE, "neon")
+    before = len(w.enemies)
+    on_screen = sum(e.body.rect.colliderect(view) for e in w.enemies)
+    c = Controls()
+    c.ult_pressed = True
+    c.aim = (w.player.body.cx + 100, w.player.body.cy)
+    w.update(c, DT)
+    after = len(w.enemies)
+    left_on_screen = sum(e.body.rect.colliderect(view) for e in w.enemies)
+    print(f"venom blast: {on_screen} enemies on screen -> {left_on_screen} ({before} -> {after} total), energy {w.player.energy:.0f}")
+    if left_on_screen:
+        failures.append("symbiote blast left enemies on screen")
+    for f in range(60):
+        w.update(Controls(), DT)
+    if shots_dir:
+        w2 = World(1, "venom", audio)
+        for f in range(20):
+            w2.update(Controls(), DT)
+        w2.update(c, DT)
+        for f in range(10):
+            w2.update(Controls(), DT)
+        shot(surf, w2, shots_dir, "venom_blast")
+
+    # Venom can swing on a symbiote tendril
+    w = World(0, "venom", audio)
+    p = w.player
+    p.body.x = 4 * TILE
+    for f in range(3):
+        w.update(Controls(), DT)
+    c = Controls(); c.jump_pressed = c.jump_held = True; c.aim = (0, 0)
+    w.update(c, DT)
+    for f in range(15):
+        c = Controls(); c.jump_held = c.right = True; c.aim = (0, 0)
+        w.update(c, DT)
+    c = Controls(); c.alt_pressed = c.alt_held = c.right = True
+    c.aim = (p.body.cx + 250, p.body.y - 250)
+    w.update(c, DT)
+    if p.anchor is None:
+        failures.append("venom could not swing")
+    else:
+        for f in range(20):
+            c.alt_pressed = False
+            c.aim = (p.body.cx + 250, p.body.y - 250)
+            w.update(c, DT)
+        print(f"venom swing ok, anchor {p.anchor[0]:.0f},{p.anchor[1]:.0f}")
+        if shots_dir:
+            shot(surf, w, shots_dir, "venom_swing")
 
     # Losing works
     w = World(0, "spiderman", audio)

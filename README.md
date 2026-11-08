@@ -25,6 +25,7 @@ If you want one file you can copy to another Ubuntu machine, run `./build.sh`. I
 | Right click (K) | Special power |
 | Shift (E) | Extra power |
 | R | Reload (Harry) |
+| F (X / middle click) | Ultimate: Venom's symbiote blast |
 | Esc | Pause |
 
 You can also jump on enemies' heads to squash them.
@@ -34,11 +35,13 @@ You can also jump on enemies' heads to squash them.
 | Hero | Left click | Right click | Shift |
 |---|---|---|---|
 | Spider-Man | Punch | Web shot (slows foes) | Hold to web-swing towards the mouse |
-| Venom | Heavy punch | Black symbiote blasts | Symbiote super-jump |
+| Venom | Heavy punch | Black symbiote blasts | Hold to swing on a symbiote tendril |
 | Harry | Pistol (12 shots) | Grenade | Reload |
 | Spin | Kick (2.5× damage while invisible) | Go invisible | Spin dash |
 | MJ | Slap | Turn into a monster (giant claws, tough hide) | Same as right click |
 | Ghost-Spider | Kick | Web shot | Hold jump in mid-air to glide |
+
+Venom also has an ultimate. When his energy bar is full, press **F** for a **symbiote blast**: symbiotes explode everywhere, every enemy on screen is wiped out, and a boss loses a fifth of its health.
 
 Powers use the blue energy bar, which refills over time. Blue lightning pickups refill it completely, and red-cross pickups restore health.
 

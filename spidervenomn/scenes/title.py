@@ -15,6 +15,7 @@ CONTROLS = [
     ("RIGHT CLICK  (K)", "Special power"),
     ("SHIFT  (E)", "Extra power (swing, dash, jump...)"),
     ("R", "Reload (Harry)"),
+    ("F  (X / MIDDLE CLICK)", "Ultimate (Venom's symbiote blast)"),
     ("ESC", "Pause"),
     ("F11 / M", "Fullscreen / music on-off"),
 ]
@@ -86,7 +87,7 @@ class TitleScene(Scene):
             pygame.draw.rect(surf, WHITE, panel, 3, border_radius=16)
             draw_text(surf, "CONTROLS", 56, (255, 230, 120), (panel.centerx, panel.top + 40), "center")
             for i, (k, d) in enumerate(CONTROLS):
-                y = panel.top + 90 + i * 40
+                y = panel.top + 82 + i * 38
                 draw_text(surf, k, 30, (120, 220, 255), (panel.left + 40, y))
                 draw_text(surf, d, 30, WHITE, (panel.left + 360, y))
             draw_text(surf, "click or press any key", 24, (180, 180, 180), (panel.centerx, panel.bottom - 22), "center")

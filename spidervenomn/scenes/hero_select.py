@@ -67,9 +67,10 @@ class HeroSelectScene(Scene):
             surf.blit(img, (r.left - 20, r.top + 50))
             draw_text(surf, info["name"].upper(), 40, info["colour"] if k != "venom" else WHITE,
                       (r.left + 18, r.top + 16), outline=BLACK)
+            step = min(56, 176 // len(info["powers"]))
             for j, line in enumerate(info["powers"]):
                 key, _, desc = line.partition(": ")
-                draw_text(surf, key, 22, (255, 230, 120), (r.left + 170, r.top + 80 + j * 56))
-                draw_text(surf, desc, 22, WHITE, (r.left + 170, r.top + 100 + j * 56))
+                draw_text(surf, key, 22, (255, 230, 120), (r.left + 170, r.top + 70 + j * step))
+                draw_text(surf, desc, 22, WHITE, (r.left + 170, r.top + 90 + j * step))
         draw_text(surf, "Click a hero  (or arrows + ENTER)      ESC: back", 26, (200, 200, 200),
                   (WIDTH // 2, 700), "midbottom")

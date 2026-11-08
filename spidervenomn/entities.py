@@ -185,6 +185,20 @@ class Hazard:
             rad = int(r.w / 2 * min(1, 0.4 + t * 6))
             pygame.draw.circle(surf, ORANGE, r.center, rad)
             pygame.draw.circle(surf, YELLOW, r.center, int(rad * 0.6))
+        elif k == "symbiote_burst":
+            f = min(1.0, self.age / 0.5)
+            rad = 60 + f * 900
+            c = r.center
+            ink = (12, 12, 18)
+            for i in range(28):
+                a = i * math.tau / 28 + self.age * 2
+                wob = math.sin(i * 3.7 + self.age * 20) * 0.12
+                p1 = (c[0] + math.cos(a) * rad * 0.45, c[1] + math.sin(a) * rad * 0.45)
+                p2 = (c[0] + math.cos(a + wob) * rad, c[1] + math.sin(a + wob) * rad)
+                pygame.draw.line(surf, ink, p1, p2, 12)
+                pygame.draw.circle(surf, ink, (int(p2[0]), int(p2[1])), 14)
+                pygame.draw.circle(surf, (230, 230, 240), (int(p2[0]), int(p2[1])), 4)
+            pygame.draw.circle(surf, ink, c, int(rad * 0.5), 10)
         elif k == "swipe":
             pygame.draw.arc(surf, WHITE, r, 0, math.pi, 6)
         else:

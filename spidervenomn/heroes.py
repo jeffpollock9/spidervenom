@@ -12,7 +12,8 @@ HERO_INFO = {
     "spiderman": dict(name="Spider-Man", colour=(205, 20, 30),
                       powers=["LMB: Punch", "RMB: Web shot (slows foes)", "SHIFT (hold): Web-swing"]),
     "venom": dict(name="Venom", colour=(60, 60, 90),
-                  powers=["LMB: Heavy punch", "RMB: Black symbiote blasts", "SHIFT: Symbiote super-jump"]),
+                  powers=["LMB: Heavy punch", "RMB: Black symbiote blasts", "SHIFT (hold): Symbiote swing",
+                          "F (full energy): SYMBIOTE BLAST"]),
     "harry": dict(name="Harry", colour=(40, 115, 60),
                   powers=["LMB (hold): Pistol, 12 shots", "RMB: Grenade", "R / SHIFT: Reload"]),
     "spin": dict(name="Spin", colour=(20, 140, 140),
@@ -134,6 +135,8 @@ class Hero:
             self.primary(ctl)
         self.special(ctl, dt)
         self.alt(ctl, dt)
+        if ctl.ult_pressed:
+            self.ultimate()
 
         if self.attack_face <= 0:
             if ctl.right and not ctl.left:
@@ -187,6 +190,9 @@ class Hero:
         pass
 
     def alt(self, ctl, dt):
+        pass
+
+    def ultimate(self):
         pass
 
     def say(self, text, secs=1.2):
@@ -255,20 +261,14 @@ class Hero:
         pass
 
 
-class SpiderMan(Hero):
-    key = "spiderman"
+class Swinger(Hero):
+    """A hero who can swing from a line (web or symbiote) while SHIFT is held."""
+    swing_sound = "web"
 
     def __init__(self, world, x, y):
         super().__init__(world, x, y)
         self.anchor = None
         self.rope = 0.0
-
-    def special(self, ctl, dt):
-        if ctl.special_pressed and self.energy >= 8 and self.cd <= 0:
-            self.energy -= 8
-            self.cd = 0.25
-            self.shoot("web", 950, 7, 7, slow=2.5, life=1.0)
-            self.world.audio.play("web")
 
     def alt(self, ctl, dt):
         b = self.body
@@ -286,7 +286,7 @@ class SpiderMan(Hero):
                 self.anchor = hit
                 self.rope = max(70.0, math.hypot(hit[0] - sx, hit[1] - sy))
                 self.energy -= 3
-                self.world.audio.play("web")
+                self.world.audio.play(self.swing_sound)
         elif not ctl.alt_held and self.anchor is not None:
             self.anchor = None
             if b.vy < 0:
@@ -324,8 +324,11 @@ class SpiderMan(Hero):
     def draw_extra(self, surf, cam):
         if self.anchor:
             sx, sy = self.shoulder()
-            pygame.draw.line(surf, WHITE, (sx - cam[0], sy - cam[1]),
-                             (self.anchor[0] - cam[0], self.anchor[1] - cam[1]), 2)
+            self.draw_rope(surf, (sx - cam[0], sy - cam[1]),
+                           (self.anchor[0] - cam[0], self.anchor[1] - cam[1]))
+
+    def draw_rope(self, surf, a, b):
+        pygame.draw.line(surf, WHITE, a, b, 2)
 
     def draw_kwargs(self):
         kw = super().draw_kwargs()
@@ -335,7 +338,18 @@ class SpiderMan(Hero):
         return kw
 
 
-class Venom(Hero):
+class SpiderMan(Swinger):
+    key = "spiderman"
+
+    def special(self, ctl, dt):
+        if ctl.special_pressed and self.energy >= 8 and self.cd <= 0:
+            self.energy -= 8
+            self.cd = 0.25
+            self.shoot("web", 950, 7, 7, slow=2.5, life=1.0)
+            self.world.audio.play("web")
+
+
+class Venom(Swinger):
     key = "venom"
     w, h = 34, 60
     speed = 310.0
@@ -352,12 +366,35 @@ class Venom(Hero):
             self.shoot("symbiote", 680, 22, 14, knock=420, life=1.4)
             self.world.audio.play("blob")
 
-    def alt(self, ctl, dt):
-        if ctl.alt_pressed and self.body.on_ground and self.energy >= 20:
-            self.energy -= 20
-            self.body.vy = -1250
-            self.world.audio.play("blob")
-            self.world.burst(self.body.cx, self.body.bottom, (20, 20, 30), 14)
+    swing_sound = "blob"
+
+    def info_line(self):
+        if self.energy >= 100:
+            return "F: BLAST READY!"
+        return None
+
+    def ultimate(self):
+        if self.energy < 100:
+            self.say("Need full energy!")
+            return
+        self.energy = 0
+        self.invuln = max(self.invuln, 1.0)
+        self.world.symbiote_blast(self.body.cx, self.body.cy)
+
+    def draw_rope(self, surf, a, b):
+        # a wriggling black tendril instead of a straight web line
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        length = math.hypot(dx, dy) or 1
+        nx, ny = -dy / length, dx / length
+        n = max(2, int(length / 12))
+        pts = []
+        for i in range(n + 1):
+            f = i / n
+            wob = math.sin(f * 10 - self.t * 18) * 5 * math.sin(f * math.pi)
+            pts.append((a[0] + dx * f + nx * wob, a[1] + dy * f + ny * wob))
+        pygame.draw.lines(surf, (12, 12, 18), False, pts, 6)
+        pygame.draw.lines(surf, (80, 80, 120), False, pts, 1)
+        pygame.draw.circle(surf, (12, 12, 18), (int(b[0]), int(b[1])), 7)
 
 
 class Harry(Hero):

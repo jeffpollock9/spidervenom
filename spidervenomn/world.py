@@ -8,7 +8,7 @@ from . import art
 from .bosses import BOSS_CLASSES
 from .core import draw_text
 from .enemies import Enemy, STYLE_FOR_CITY
-from .entities import Hazard, Pickup, Particle, Popup
+from .entities import Hazard, Pickup, Particle, Popup, Projectile
 from .heroes import HERO_CLASSES
 from .levels import CITIES, build_level
 from .physics import TileMap, MovingPlatform
@@ -103,6 +103,28 @@ class World:
             p = self.player
             if math.hypot(p.body.cx - x, p.body.cy - y) < radius + p.body.w / 2:
                 p.take_damage(dmg, x, 420)
+
+    def symbiote_blast(self, x, y):
+        """Venom's ultimate: symbiotes explode everywhere and wipe out every enemy on screen."""
+        view = pygame.Rect(int(self.cam_x), 0, WIDTH, HEIGHT)
+        for e in self.enemies:
+            if e.body.rect.colliderect(view):
+                e.hurt(self, e.hp, 1 if e.body.cx > x else -1, 500)
+        boss = self.boss
+        if boss and boss.active and not boss.dead and boss.body.rect.colliderect(view):
+            boss.hurt(self, boss.max_hp * 0.2, 1 if boss.body.cx > x else -1)
+        r = pygame.Rect(0, 0, 40, 40)
+        r.center = (int(x), int(y))
+        self.hazards.append(Hazard(r, "symbiote_burst", 0, life=0.8, owner="fx"))
+        for i in range(24):
+            a = i * math.tau / 24
+            self.projectiles.append(Projectile(x, y, math.cos(a) * 900, math.sin(a) * 900, "player",
+                                               "symbiote", 15, 12, life=1.0, pierce=True))
+        self.burst(x, y, (15, 12, 25), 80, speed=700)
+        self.audio.play("roar")
+        self.audio.play("explode")
+        self.shake(22)
+        self.banner("SYMBIOTE BLAST!", 1.2)
 
     def burst(self, x, y, colour, n, speed=260):
         for _ in range(n):
@@ -383,7 +405,7 @@ class World:
                      (230, 40, 40) if boss.phase == 1 else (255, 120, 20))
 
         if self.t < 7 and not self.gate_closed:
-            draw_text(surf, "A/D move   W/SPACE jump   MOUSE aim   LMB attack   RMB power   SHIFT extra   ESC pause",
+            draw_text(surf, "A/D move   W/SPACE jump   MOUSE aim   LMB attack   RMB power   SHIFT extra   F ultimate   ESC pause",
                       24, WHITE, (WIDTH // 2, HEIGHT - 20), "midbottom")
 
         if self.banner_t > 0 and self.banner_text:

@@ -72,6 +72,7 @@ class Controls:
         self.special_held = self.special_pressed = False
         self.alt_held = self.alt_pressed = False
         self.reload_pressed = False
+        self.ult_pressed = False
         self.aim = (0.0, 0.0)
 
 
@@ -89,6 +90,8 @@ class InputReader:
                 self.pressed.add("alt")
             elif e.key == pygame.K_r:
                 self.pressed.add("reload")
+            elif e.key in (pygame.K_f, pygame.K_x):
+                self.pressed.add("ult")
             elif e.key in (pygame.K_j,):
                 self.pressed.add("primary")
             elif e.key in (pygame.K_k, pygame.K_q):
@@ -98,6 +101,8 @@ class InputReader:
                 self.pressed.add("primary")
             elif e.button == 3:
                 self.pressed.add("special")
+            elif e.button == 2:
+                self.pressed.add("ult")
 
     def read(self, camera_x, camera_y=0):
         k = pygame.key.get_pressed()
@@ -116,6 +121,7 @@ class InputReader:
         c.special_pressed = "special" in self.pressed
         c.alt_pressed = "alt" in self.pressed
         c.reload_pressed = "reload" in self.pressed
+        c.ult_pressed = "ult" in self.pressed
         c.aim = (mx + camera_x, my + camera_y)
         self.pressed.clear()
         return c
