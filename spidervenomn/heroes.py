@@ -13,7 +13,7 @@ HERO_INFO = {
                       powers=["LMB: Punch", "RMB: Web shot (slows foes)", "SHIFT (hold): Web-swing"]),
     "venom": dict(name="Venom", colour=(60, 60, 90),
                   powers=["LMB: Heavy punch", "RMB: Black symbiote blasts", "SHIFT (hold): Symbiote swing",
-                          "F (full energy): SYMBIOTE BLAST"]),
+                          "JUMP in the air: Symbiote wings (fly)", "F (full energy): SYMBIOTE BLAST"]),
     "harry": dict(name="Harry", colour=(40, 115, 60),
                   powers=["LMB (hold): Pistol, 12 shots", "RMB: Grenade", "R / SHIFT: Reload"]),
     "spin": dict(name="Spin", colour=(20, 140, 140),
@@ -251,6 +251,7 @@ class Hero:
         if self.invisible:
             shimmer = 55 + int(math.sin(self.t * 12) * 25)
             tmp.set_alpha(shimmer)
+        self.draw_behind(surf, cam)
         surf.blit(tmp, (b.cx - cam[0] - size // 2, b.bottom - cam[1] - size + 10))
         self.draw_extra(surf, cam)
         if self.message:
@@ -258,6 +259,9 @@ class Hero:
             draw_text(surf, self.message[0], 26, WHITE, (b.cx - cam[0], b.y - cam[1] - 20), "midbottom")
 
     def draw_extra(self, surf, cam):
+        pass
+
+    def draw_behind(self, surf, cam):
         pass
 
 
@@ -358,6 +362,51 @@ class Venom(Swinger):
     melee_damage = 20
     melee_range = 62
     melee_cd = 0.42
+    fly_speed = 360.0
+    fly_drain = 22.0  # energy/s while flying (regen still ticks, so ~8/s net)
+
+    def __init__(self, world, x, y):
+        super().__init__(world, x, y)
+        self.flying = False
+        self.wing_t = 0.0
+
+    def move(self, ctl, dt):
+        b = self.body
+        if (not self.flying and self.anchor is None and ctl.jump_pressed and not b.on_ground
+                and self.coyote <= 0 and self.energy >= 10):
+            self.flying = True
+            self.jump_buf = 0.0
+            b.vy = min(b.vy, -200)
+            self.world.audio.play(self.swing_sound)
+        if self.flying and (self.anchor is not None or b.on_ground and b.vy >= 0 or self.energy <= 0):
+            self.flying = False
+        self.wing_t = max(0.0, self.wing_t - dt)
+        if not self.flying:
+            return super().move(ctl, dt)
+        self.energy = max(0.0, self.energy - self.fly_drain * dt)
+        self.wing_t = 0.35
+        dirx = (1 if ctl.right else 0) - (1 if ctl.left else 0)
+        diry = (1 if ctl.down else 0) - (1 if ctl.jump_held else 0)
+        tx, ty = dirx * self.fly_speed, diry * self.fly_speed * 0.8 + 25  # slight sink when hovering
+        k = min(1.0, 6 * dt)
+        b.vx += (tx - b.vx) * k
+        b.vy += (ty - b.vy) * k
+        b.step(self.world.tm, dt, self.world.platforms, drop=ctl.down)
+        self.coyote = 0
+        if b.on_ground and diry >= 0:
+            self.flying = False
+
+    def on_fall(self):
+        super().on_fall()
+        self.flying = False
+
+    def draw_behind(self, surf, cam):
+        if self.flying or self.wing_t > 0:
+            b = self.body
+            sx, sy = self.shoulder()
+            fold = 1.0 if self.flying else self.wing_t / 0.35
+            art.draw_symbiote_wings(surf, sx - cam[0] - self.facing * 6, sy - cam[1],
+                                    self.facing, self.t, b.vy, fold)
 
     def special(self, ctl, dt):
         if ctl.special_pressed and self.energy >= 14 and self.cd <= 0:
@@ -371,6 +420,8 @@ class Venom(Swinger):
     def info_line(self):
         if self.energy >= 100:
             return "F: BLAST READY!"
+        if self.flying:
+            return "FLYING"
         return None
 
     def ultimate(self):

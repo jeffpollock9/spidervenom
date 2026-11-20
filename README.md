@@ -41,6 +41,8 @@ You can also jump on enemies' heads to squash them.
 | MJ | Slap | Turn into a monster (giant claws, tough hide) | Same as right click |
 | Ghost-Spider | Kick | Web shot | Hold jump in mid-air to glide |
 
+Venom can fly: press **jump in mid-air** and he sprouts big black symbiote wings. Hold jump to climb, **S / down** to drop, A/D to steer. Flying slowly drains energy, and the wings fold away when you land.
+
 Venom also has an ultimate. When his energy bar is full, press **F** for a **symbiote blast**: symbiotes explode everywhere, every enemy on screen is wiped out, and a boss loses a fifth of its health.
 
 Powers use the blue energy bar, which refills over time. Blue lightning pickups refill it completely, and red-cross pickups restore health.

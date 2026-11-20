@@ -273,6 +273,41 @@ def draw_mj_monster(surf, cx, bottom, h, facing, t, moving=False, punch=0.0):
             pygame.draw.line(surf, (240, 240, 220), end, (end[0] + f * 8 * u, end[1] + k * 5 * u), max(2, int(3 * u)))
 
 
+def draw_symbiote_wings(surf, rx, ry, facing, t, vy=0.0, fold=1.0, L=64):
+    """Big bat-like symbiote wings rooted at (rx, ry), spreading behind the hero."""
+    if fold <= 0.02:
+        return
+    rate = 13 if vy < -40 else 8
+    phase = math.sin(t * rate)
+    b = -facing  # wings sweep out behind
+    # (back, up) in wing space; tip, then fingers fanning down to the root
+    shape = [(0, 0), (0.45, -0.55), (1.05, -0.8), (1.0, -0.2), (0.75, 0.15), (0.35, 0.32), (0.05, 0.25)]
+    bones = [1, 2, 3, 4, 5]
+    for layer, (off, flap0, scale, col, edge) in enumerate((
+            ((-5, -4), -0.25, 0.85, (8, 8, 14), (40, 40, 64)),
+            ((0, 0), 0.0, 1.0, (16, 16, 24), (70, 70, 110)))):
+        ang = flap0 + phase * 0.6
+        ca, sa = math.cos(ang), math.sin(ang)
+        k = L * scale * fold
+        ox, oy = rx + off[0] * facing, ry + off[1]
+
+        def pt(px, py):
+            x, y = px * k, py * k
+            x, y = x * ca - y * sa, x * sa + y * ca
+            return ox + b * x, oy + y
+        pts = [pt(*q) for q in shape]
+        poly = [pts[0], pts[1], pts[2]]
+        for a, c in zip(pts[2:-1], pts[3:]):
+            mx, my = (a[0] + c[0]) / 2, (a[1] + c[1]) / 2  # scallop toward the root
+            poly.append((mx + (ox - mx) * 0.18, my + (oy - my) * 0.18))
+            poly.append(c)
+        pygame.draw.polygon(surf, col, poly)
+        for i in bones:
+            pygame.draw.line(surf, edge, pts[0] if i != 2 else pts[1], pts[i], 2 if layer else 1)
+        pygame.draw.line(surf, edge, pts[0], pts[1], 3)
+        pygame.draw.circle(surf, (230, 230, 240), (int(pts[2][0]), int(pts[2][1])), 2)
+
+
 def draw_hero(surf, key, cx, bottom, facing, t, moving=False, air=False, aim=None,
               punch=0.0, glide=False, monster=False, h=None):
     if monster:

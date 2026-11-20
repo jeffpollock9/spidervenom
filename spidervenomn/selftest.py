@@ -185,6 +185,34 @@ def run(shots_dir=None):
         if shots_dir:
             shot(surf, w, shots_dir, "venom_swing")
 
+    # Venom can fly on symbiote wings
+    w = World(0, "venom", audio)
+    p = w.player
+    p.body.x = 4 * TILE
+    for f in range(5):
+        w.update(Controls(), DT)
+    c = Controls(); c.jump_pressed = c.jump_held = True; c.aim = (0, 0)
+    w.update(c, DT)
+    for f in range(20):
+        c = Controls(); c.jump_held = True; c.aim = (0, 0)
+        w.update(c, DT)
+    c = Controls(); c.jump_pressed = c.jump_held = True; c.aim = (0, 0)
+    w.update(c, DT)
+    start_y = p.body.y
+    for f in range(60):
+        c = Controls(); c.jump_held = c.right = True; c.aim = (0, 0)
+        w.update(c, DT)
+    print(f"venom flight: flying={p.flying} rose {start_y - p.body.y:.0f}px, energy {p.energy:.0f}")
+    if not p.flying or p.body.y > start_y - 100:
+        failures.append("venom could not fly")
+    elif shots_dir:
+        shot(surf, w, shots_dir, "venom_fly")
+    for f in range(240):
+        c = Controls(); c.down = True; c.aim = (0, 0)
+        w.update(c, DT)
+    if p.flying:
+        failures.append("venom did not land after flying down")
+
     # Losing works
     w = World(0, "spiderman", audio)
     w.player.take_damage(1000)
