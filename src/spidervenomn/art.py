@@ -358,9 +358,117 @@ def draw_ninja_group(surf, cx, bottom, facing, t, moving=False, air=False, scale
         draw_ninja_kid(surf, order[slot], x, bottom, facing, t + slot * 0.4, moving, air, scale=scale)
 
 
+SONIC_BLUE = (35, 95, 225)
+SONIC_TAN = (245, 205, 155)
+
+
+def _quill(surf, colour, base_a, base_b, tip, glint=False):
+    pygame.draw.polygon(surf, colour, [base_a, tip, base_b])
+    if glint:
+        pygame.draw.line(surf, (200, 230, 255), base_a, tip, 2)
+
+
+def draw_sonic(surf, cx, bottom, facing, t, moving=False, air=False, punch=0.0, ball=False,
+               fast=False, h=None, **_):
+    """A cartoon blue hedgehog. fast: quills stand out long and sharp; ball: curled up spinning."""
+    u = (h or 50) / 50.0
+    f = facing
+    blue = SONIC_BLUE
+    dark = _darker(blue, 0.7)
+    if ball:
+        c = (cx, bottom - 20 * u)
+        r = 19 * u
+        for i in range(7):  # spikes all round, spinning
+            a = t * 22 * f + i * math.tau / 7
+            tip = (c[0] + math.cos(a) * (r + (9 if fast else 5) * u), c[1] + math.sin(a) * (r + (9 if fast else 5) * u))
+            b1 = (c[0] + math.cos(a - 0.35) * r * 0.9, c[1] + math.sin(a - 0.35) * r * 0.9)
+            b2 = (c[0] + math.cos(a + 0.35) * r * 0.9, c[1] + math.sin(a + 0.35) * r * 0.9)
+            _quill(surf, dark, b1, b2, tip, glint=fast)
+        pygame.draw.circle(surf, blue, (int(c[0]), int(c[1])), int(r))
+        for i in range(3):
+            a = t * 22 * f + i * math.tau / 3
+            pygame.draw.arc(surf, dark, (c[0] - r * 0.7, c[1] - r * 0.7, r * 1.4, r * 1.4), a, a + 1.4, max(2, int(3 * u)))
+        pygame.draw.circle(surf, SONIC_TAN, (int(c[0] + f * r * 0.3), int(c[1] + r * 0.25)), int(r * 0.35))
+        return
+    top = bottom - 50 * u
+    hip = (cx, bottom - 18 * u)
+    sh = (cx + f * 2 * u, bottom - 30 * u)
+    head = (cx + f * 3 * u, top + 13 * u)
+    hr = 13 * u
+    # quills on the back of the head and back
+    ql = (24 if fast else 15) * u
+    for k, (dy, extra) in enumerate(((-9, 0), (-1, 4), (7, 0), (15, -6))):
+        base_a = (head[0] - f * hr * 0.2, head[1] + (dy - 5) * u)
+        base_b = (head[0] - f * hr * 0.2, head[1] + (dy + 5) * u)
+        lift = -6 * u if fast else 3 * u * k
+        tip = (head[0] - f * (hr + ql + extra * u), head[1] + dy * u + lift + (k - 1.5) * (2 if fast else 4) * u)
+        _quill(surf, dark if k % 2 else blue, base_a, base_b, tip, glint=fast)
+    # legs and shoes
+    if moving and fast:
+        # legs are a blur
+        blur = pygame.Rect(0, 0, int(26 * u), int(16 * u))
+        blur.center = (int(hip[0]), int(bottom - 8 * u))
+        pygame.draw.ellipse(surf, (230, 40, 40), blur, max(2, int(4 * u)))
+        pygame.draw.ellipse(surf, blue, blur.inflate(-int(10 * u), -int(8 * u)), max(1, int(2 * u)))
+    else:
+        if air:
+            legs = (0.7, -0.3)
+        elif moving:
+            s = math.sin(t * 18) * 0.8
+            legs = (s, -s)
+        else:
+            legs = (0.15, -0.15)
+        for i, a in enumerate(legs):
+            knee = (hip[0] + math.sin(a) * f * 8 * u, hip[1] + math.cos(a) * 8 * u)
+            foot = (knee[0] + math.sin(a * 0.3) * f * 3 * u, bottom - 4 * u)
+            col = blue if i == 0 else dark
+            _limb(surf, col, hip, knee, max(2, int(4 * u)))
+            _limb(surf, col, knee, foot, max(2, int(4 * u)))
+            shoe = pygame.Rect(0, 0, int(15 * u), int(7 * u))
+            shoe.midbottom = (int(foot[0] + f * 3 * u), int(bottom))
+            pygame.draw.ellipse(surf, (220, 30, 30) if i == 0 else (170, 20, 20), shoe)
+            pygame.draw.line(surf, WHITE, (shoe.centerx - 2 * u, shoe.top + 1), (shoe.centerx - 2 * u, shoe.bottom - 1), max(1, int(2 * u)))
+    # back arm
+    pygame.draw.line(surf, dark, sh, (sh[0] - f * 7 * u, sh[1] + 9 * u), max(2, int(3 * u)))
+    pygame.draw.circle(surf, (225, 225, 230), (int(sh[0] - f * 7 * u), int(sh[1] + 9 * u)), max(2, int(3.5 * u)))
+    # body
+    body = pygame.Rect(0, 0, int(18 * u), int(20 * u))
+    body.midbottom = (int(cx), int(hip[1] + 3 * u))
+    pygame.draw.ellipse(surf, blue, body)
+    pygame.draw.ellipse(surf, SONIC_TAN, body.inflate(-int(8 * u), -int(6 * u)).move(int(f * 3 * u), int(2 * u)))
+    # head
+    pygame.draw.circle(surf, blue, (int(head[0]), int(head[1])), int(hr))
+    pygame.draw.polygon(surf, blue, [(head[0] - f * 2 * u, head[1] - hr * 0.7), (head[0] - f * 6 * u, head[1] - hr - 6 * u),
+                                     (head[0] + f * 4 * u, head[1] - hr * 0.85)])  # ear
+    pygame.draw.ellipse(surf, SONIC_TAN, (head[0] + f * 3 * u - 7 * u, head[1] + 1 * u, 14 * u, 10 * u))  # muzzle
+    pygame.draw.circle(surf, BLACK, (int(head[0] + f * hr), int(head[1] + 3 * u)), max(2, int(2.5 * u)))  # nose
+    eye = pygame.Rect(0, 0, int(13 * u), int(10 * u))
+    eye.center = (int(head[0] + f * 5 * u), int(head[1] - 3 * u))
+    pygame.draw.ellipse(surf, WHITE, eye)
+    pygame.draw.circle(surf, (40, 170, 70), (int(eye.centerx + f * 3 * u), int(eye.centery)), max(2, int(2.5 * u)))
+    pygame.draw.circle(surf, BLACK, (int(eye.centerx + f * 3.5 * u), int(eye.centery)), max(1, int(1.2 * u)))
+    pygame.draw.arc(surf, BLACK, (head[0] + f * 4 * u - 4 * u, head[1] + 5 * u, 8 * u, 4 * u), math.pi, 2 * math.pi, 1)
+    # front arm (kicks and punches reach forward)
+    if punch > 0:
+        end = (sh[0] + f * (8 + 9 * math.sin(punch * math.pi)) * u, sh[1] - 1 * u)
+    elif moving and fast:
+        end = (sh[0] - f * 10 * u, sh[1] + 4 * u)  # arms swept back
+    else:
+        a = math.sin(t * 18) * 0.7 if moving else 0.2
+        end = (sh[0] + math.sin(a) * f * 9 * u, sh[1] + math.cos(a) * 9 * u)
+    pygame.draw.line(surf, blue, sh, end, max(2, int(3 * u)))
+    pygame.draw.circle(surf, WHITE, (int(end[0]), int(end[1])), max(2, int(4 * u)))
+    if fast and moving:
+        for k in range(4):
+            y = bottom - (8 + k * 11) * u
+            pygame.draw.line(surf, (190, 220, 255), (cx - f * (26 + k * 4) * u, y), (cx - f * (46 + k * 6) * u, y), 2)
+
+
 def draw_hero(surf, key, cx, bottom, facing, t, moving=False, air=False, aim=None,
-              punch=0.0, glide=False, monster=False, h=None):
-    if key == "ninjas":
+              punch=0.0, glide=False, monster=False, h=None, ball=False, fast=False):
+    if key == "sonic":
+        draw_sonic(surf, cx, bottom, facing, t, moving, air, punch, ball, fast, h=h and h * 0.9)
+    elif key == "ninjas":
         draw_ninja_group(surf, cx, bottom, facing, t, moving, air, scale=(h or 56) / 56 * 0.92)
     elif monster:
         draw_mj_monster(surf, cx, bottom, h or 84, facing, t, moving, punch)

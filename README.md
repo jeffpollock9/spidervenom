@@ -1,6 +1,6 @@
 # SpiderVenomn
 
-A 2D superhero platformer for Ubuntu 24.04. You play with the keyboard and mouse. Pick one of seven heroes, choose one of six cities, fight your way across it and beat the boss at the end.
+A 2D superhero platformer for Ubuntu 24.04. You play with the keyboard and mouse. Pick one of eight heroes, choose one of six cities, fight your way across it and beat the boss at the end.
 
 ## Install and play
 
@@ -41,12 +41,15 @@ You can also jump on enemies' heads to squash them.
 | MJ | Slap | Turn into a monster (giant claws, tough hide) | Same as right click |
 | Ghost-Spider | Kick | Web shot | Hold jump in mid-air to glide |
 | Ninja Kids | Team ninja kick | Shuriken volley (one from each kid) | Swap who leads |
+| Sonic | Kick | Homing attack (zips at the nearest baddie) | Hold to rev a spin dash, let go to launch |
 
 Venom can fly: press **jump in mid-air** and he sprouts big black symbiote wings. Hold jump to climb, **S / down** to drop, A/D to steer. He can fly for as long as you like, and the wings fold away when you land.
 
 Venom also has an ultimate. When his energy bar is full, press **F** for a **symbiote blast**: symbiotes explode everywhere, every enemy on screen is wiped out, and a boss loses a fifth of its health.
 
 The **Ninja Kids** are Ashton, Payton, Brighton and Paxton, and you control all four as one team. You steer the leader and the other three run along behind, copying every jump. Press **jump in mid-air** and a teammate boosts the leader up again, up to twice before you land. With full energy, **F** starts the **Ninja Storm**: all four kids race across the screen and knock out every enemy they pass. A boss loses 15% of its health.
+
+**Sonic** speeds up the longer you keep running, up to more than twice normal speed. Once he's going fast, his quills stand out long and sharp: any baddie or boss he runs into gets spiked, and touching them doesn't hurt him. A spin dash or a homing attack spikes too, and a homing attack bounces him up off whatever it hits.
 
 Powers use the blue energy bar, which refills over time. Blue lightning pickups refill it completely, and red-cross pickups restore health.
 

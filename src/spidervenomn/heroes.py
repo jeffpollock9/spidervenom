@@ -25,6 +25,9 @@ HERO_INFO = {
     "ninjas": dict(name="Ninja Kids", colour=(255, 170, 40),
                    powers=["LMB: Team ninja kick", "RMB: Shuriken volley (x4)", "JUMP in the air: Team boost (x2)",
                            "SHIFT: Swap leader", "F (full energy): NINJA STORM"]),
+    "sonic": dict(name="Sonic", colour=(40, 110, 240),
+                  powers=["LMB: Kick", "RMB: Homing attack", "SHIFT (hold, let go): Spin dash",
+                          "RUN FAST: Spiky quills hurt baddies"]),
 }
 HERO_KEYS = list(HERO_INFO)
 
@@ -81,6 +84,10 @@ class Hero:
 
     def damage_mult(self):
         return 1.0
+
+    def spiky(self):
+        """True when touching enemies hurts them instead of us (Sonic at speed)."""
+        return False
 
     def speed_mult(self):
         return 1.0
@@ -922,5 +929,181 @@ class NinjaKids(Hero):
         return kw
 
 
+class Sonic(Hero):
+    """Builds up speed the longer he runs; at full tilt his quills spike anything he touches."""
+    key = "sonic"
+    w, h = 30, 50
+    speed = 360.0
+    top_speed = 800.0
+    fast_speed = 540.0   # above this his quills spike baddies
+    ramp = 1.4           # seconds of running to reach top speed
+    jump = 860.0
+    max_hp = 100
+    melee_damage = 12
+    melee_range = 50
+    spike_damage = 25
+
+    def __init__(self, world, x, y):
+        super().__init__(world, x, y)
+        self.run_t = 0.0
+        self.charging = False
+        self.charge = 0.0
+        self.spin_t = 0.0
+        self.homing_t = 0.0
+        self.spike_cd = {}
+        self.trail = []
+
+    def fast(self):
+        return abs(self.body.vx) > self.fast_speed or self.spin_t > 0 or self.homing_t > 0
+
+    def spiky(self):
+        return self.fast() and self.resting is None
+
+    def speed_mult(self):
+        return (self.speed + (self.top_speed - self.speed) * self.run_t / self.ramp) / self.speed
+
+    def stop_moves(self):
+        self.charging = False
+        self.charge = self.spin_t = self.homing_t = self.run_t = 0.0
+
+    def on_rest(self):
+        self.stop_moves()
+
+    def on_fall(self):
+        self.stop_moves()
+
+    def move(self, ctl, dt):
+        b = self.body
+        tm, plats = self.world.tm, self.world.platforms
+        if self.charging:  # revving a spin dash on the spot
+            b.vx *= 0.75
+            b.apply_gravity(dt)
+            b.step(tm, dt, plats)
+            self.coyote = 0.1 if b.on_ground else 0.0
+            return
+        if self.homing_t > 0:
+            self.homing_t = max(0.0, self.homing_t - dt)
+            b.step(tm, dt, plats)
+            if b.hit_wall or b.on_ground:
+                self.homing_t = 0.0
+            self.coyote = 0.0
+            return
+        dirx = (1 if ctl.right else 0) - (1 if ctl.left else 0)
+        if dirx and dirx * b.vx >= -20:
+            self.run_t = min(self.ramp, self.run_t + dt)
+        else:
+            self.run_t = max(0.0, self.run_t - 3 * dt)
+        keep = b.vx if self.spin_t > 0 else None
+        super().move(ctl, dt)
+        if b.hit_wall:
+            self.run_t = 0.0
+            self.spin_t = 0.0
+        elif keep is not None:
+            b.vx = keep * (1 - 0.6 * dt)  # a spin dash rolls on under its own steam
+            if dirx == -math.copysign(1, keep):
+                b.vx -= math.copysign(1600 * dt, keep)
+
+    def primary(self, ctl):
+        if self.cd <= 0 and ctl.primary_pressed and not self.charging:
+            self.melee(sound="punch")
+
+    def special(self, ctl, dt):
+        """Homing attack: zip at the nearest baddie (or air-dash forward if there's none)."""
+        b = self.body
+        if not ctl.special_pressed or self.homing_t > 0 or self.charging or self.energy < 12:
+            return
+        best, best_d = None, 520.0
+        for e in self.world.targets():
+            dx, dy = e.body.cx - b.cx, e.body.cy - b.cy
+            d = math.hypot(dx, dy)
+            if d < best_d and dx * self.facing > -60:
+                best, best_d = e, d
+        self.energy -= 12
+        if best is not None:
+            ang = math.atan2(best.body.cy - b.cy, best.body.cx - b.cx)
+            b.vx, b.vy = math.cos(ang) * 1150, math.sin(ang) * 1150
+            self.facing = 1 if b.vx >= 0 else -1
+            self.homing_t = 0.45
+        else:
+            b.vx, b.vy = self.facing * 950, min(b.vy, -120)
+            self.homing_t = 0.2
+        self.world.audio.play("invis")
+
+    def alt(self, ctl, dt):
+        """Spin dash: hold SHIFT on the ground to rev up, let go to launch."""
+        b = self.body
+        if ctl.alt_held and b.on_ground and self.spin_t <= 0 and self.homing_t <= 0:
+            if not self.charging:
+                self.charging = True
+                self.charge = 0.0
+            before = self.charge
+            self.charge = min(1.0, self.charge + dt * 1.6)
+            if int(before * 6) != int(self.charge * 6):
+                self.world.audio.play("select")
+                self.world.burst(b.cx - self.facing * 14, b.bottom - 4, (230, 230, 230), 3, 160)
+        elif self.charging:
+            self.charging = False
+            b.vx = self.facing * (650 + 450 * self.charge)
+            self.spin_t = 0.6 + 0.6 * self.charge
+            self.run_t = self.ramp
+            self.charge = 0.0
+            self.world.audio.play("invis")
+
+    def update(self, ctl, dt):
+        super().update(ctl, dt)
+        if self.resting is not None:
+            self.trail.clear()
+            return
+        b = self.body
+        self.spin_t = max(0.0, self.spin_t - dt)
+        if self.spiky():
+            self.spike(b)
+        self.trail.append((b.cx, b.bottom, self.facing, b.on_ground))
+        del self.trail[:-12]
+
+    def spike(self, b):
+        w = self.world
+        r = b.rect.inflate(18, 10)
+        hit = False
+        for e in w.targets():
+            if e.body.rect.colliderect(r) and self.spike_cd.get(e.uid, 0) <= self.t:
+                self.spike_cd[e.uid] = self.t + 0.35
+                d = 1 if e.body.cx >= b.cx else -1
+                e.hurt(w, self.spike_damage * (1.4 if self.homing_t > 0 else 1.0), d, 420)
+                w.burst(e.body.cx, e.body.cy, (120, 180, 255), 10, 320)
+                hit = True
+        if hit:
+            w.audio.play("hit")
+            if self.homing_t > 0:  # bounce off what we homed in on
+                self.homing_t = 0.0
+                b.vx *= 0.3
+                b.vy = -650
+
+    def info_line(self):
+        if self.charging:
+            return f"SPIN DASH {int(self.charge * 100)}%"
+        if self.spiky():
+            return "SPIKES OUT!"
+        return f"SPEED {int(abs(self.body.vx))}"
+
+    def render_sprite(self, surf, cx, bottom, facing, moving=False, air=False, aim=None, punch=0.0, **_):
+        resting = self.resting is not None
+        ball = not resting and (self.charging or self.spin_t > 0 or self.homing_t > 0
+                                or (air and self.body.vy < 0))
+        art.draw_sonic(surf, cx, bottom, facing, self.t, moving or (self.fast() and not air), air, punch,
+                       ball=ball, fast=self.fast() and not resting)
+
+    def draw_behind(self, surf, cam):
+        if not self.fast() or self.resting is not None or len(self.trail) < 10:
+            return
+        size = 160
+        for k, idx in enumerate((-10, -7, -4)):
+            x, bottom, facing, on_ground = self.trail[idx]
+            ghost = pygame.Surface((size, size), pygame.SRCALPHA)
+            self.render_sprite(ghost, size // 2, size - 10, facing, moving=on_ground, air=not on_ground)
+            ghost.set_alpha(50 + k * 35)
+            surf.blit(ghost, (x - cam[0] - size // 2, bottom - cam[1] - size + 10))
+
+
 HERO_CLASSES = {"spiderman": SpiderMan, "venom": Venom, "harry": Harry,
-                "spin": Spin, "mj": MJ, "ghost": GhostSpider, "ninjas": NinjaKids}
+                "spin": Spin, "mj": MJ, "ghost": GhostSpider, "ninjas": NinjaKids, "sonic": Sonic}

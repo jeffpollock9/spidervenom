@@ -327,6 +327,54 @@ def run(shots_dir=None):
                 w.update(Controls(), DT)
             shot(surf, w, shots_dir, f"house_{col}")
 
+    # Sonic speeds up the longer he runs, and at full speed his quills spike baddies without hurting him
+    w = World(0, "sonic", audio)
+    p = w.player
+    w.enemies.clear()
+    for f in range(10):
+        w.update(Controls(), DT)
+    top = 0.0
+    for f in range(100):
+        c = Controls(); c.right = True; c.aim = (0, 0)
+        w.update(c, DT)
+        top = max(top, abs(p.body.vx))
+    print(f"sonic top speed {top:.0f}")
+    if top < p.fast_speed + 50:
+        failures.append(f"sonic never got fast (top speed {top:.0f})")
+    w = World(0, "sonic", audio)
+    p = w.player
+    w.enemies.clear()
+    for f in range(10):
+        w.update(Controls(), DT)
+    p.run_t = p.ramp
+    p.body.vx = 750
+    w.spawn_enemy("walker", p.body.x + 160, GROUND_ROW * TILE, "neon")
+    foe = w.enemies[-1]
+    for f in range(20):
+        c = Controls(); c.right = True; c.aim = (0, 0)
+        w.update(c, DT)
+        if f == 6 and shots_dir:
+            shot(surf, w, shots_dir, "sonic_fast")
+    print(f"sonic spikes: foe hp {foe.hp:.0f}/{foe.max_hp}, sonic hp {p.hp:.0f}")
+    if foe.hp >= foe.max_hp or p.hp < p.max_hp:
+        failures.append(f"sonic spikes broken (foe hp {foe.hp:.0f}, sonic hp {p.hp:.0f})")
+    # spin dash: hold SHIFT, let go
+    p.body.x = 4 * TILE
+    p.body.vx = 0
+    for f in range(30):
+        w.update(Controls(), DT)
+    for f in range(40):
+        c = Controls(); c.alt_held = True; c.alt_pressed = f == 0; c.aim = (0, 0)
+        w.update(c, DT)
+        if f == 30 and shots_dir:
+            shot(surf, w, shots_dir, "sonic_rev")
+    c = Controls(); c.aim = (0, 0)
+    w.update(c, DT)
+    print(f"sonic spin dash: vx {p.body.vx:.0f}, spiky={p.spiky()}")
+    if abs(p.body.vx) < 900 or not p.spiky():
+        failures.append(f"sonic spin dash broken (vx {p.body.vx:.0f})")
+
+    # Losing works
     w = World(0, "spiderman", audio)
     w.player.take_damage(1000)
     for f in range(200):

@@ -251,7 +251,7 @@ class World:
                         e.hurt(self, 25, player.facing, 100)
                         player.body.vy = -560
                         self.audio.play("hit")
-                    else:
+                    elif not player.spiky():
                         player.take_damage(e.contact, e.body.cx)
             boss = self.boss
             if boss and boss.active and not boss.dead and not boss.intangible \
@@ -260,7 +260,7 @@ class World:
                     boss.hurt(self, 15, player.facing)
                     player.body.vy = -700
                     self.audio.play("hit")
-                else:
+                elif not player.spiky():
                     player.take_damage(boss.contact, boss.body.cx, 450)
 
         for pk in self.pickups:
