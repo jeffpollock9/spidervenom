@@ -207,6 +207,12 @@ def run(shots_dir=None):
         failures.append("venom could not fly")
     elif shots_dir:
         shot(surf, w, shots_dir, "venom_fly")
+    for f in range(60 * 10):  # keep climbing for 10s: still flying, pinned under the top of the screen
+        c = Controls(); c.jump_held = True; c.aim = (0, 0)
+        w.update(c, DT)
+    print(f"venom 10s flight: flying={p.flying} y={p.body.y:.0f} energy {p.energy:.0f}")
+    if not p.flying or p.body.y < 0 or p.energy < 99:
+        failures.append(f"venom can't fly forever (flying={p.flying}, y={p.body.y:.0f}, energy={p.energy:.0f})")
     for f in range(240):
         c = Controls(); c.down = True; c.aim = (0, 0)
         w.update(c, DT)

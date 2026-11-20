@@ -131,6 +131,9 @@ class Hero:
                 self.message = None
 
         self.move(ctl, dt)
+        if self.body.y < 0:  # the top of the screen is a ceiling: never vanish off it
+            self.body.y = 0
+            self.body.vy = max(0.0, self.body.vy)
         if ctl.primary_pressed or ctl.primary_held:
             self.primary(ctl)
         self.special(ctl, dt)
@@ -363,7 +366,6 @@ class Venom(Swinger):
     melee_range = 62
     melee_cd = 0.42
     fly_speed = 360.0
-    fly_drain = 22.0  # energy/s while flying (regen still ticks, so ~8/s net)
 
     def __init__(self, world, x, y):
         super().__init__(world, x, y)
@@ -373,17 +375,16 @@ class Venom(Swinger):
     def move(self, ctl, dt):
         b = self.body
         if (not self.flying and self.anchor is None and ctl.jump_pressed and not b.on_ground
-                and self.coyote <= 0 and self.energy >= 10):
+                and self.coyote <= 0):
             self.flying = True
             self.jump_buf = 0.0
             b.vy = min(b.vy, -200)
             self.world.audio.play(self.swing_sound)
-        if self.flying and (self.anchor is not None or b.on_ground and b.vy >= 0 or self.energy <= 0):
+        if self.flying and (self.anchor is not None or b.on_ground and b.vy >= 0):
             self.flying = False
         self.wing_t = max(0.0, self.wing_t - dt)
         if not self.flying:
             return super().move(ctl, dt)
-        self.energy = max(0.0, self.energy - self.fly_drain * dt)
         self.wing_t = 0.35
         dirx = (1 if ctl.right else 0) - (1 if ctl.left else 0)
         diry = (1 if ctl.down else 0) - (1 if ctl.jump_held else 0)
