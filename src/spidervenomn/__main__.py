@@ -1,9 +1,8 @@
-#!/usr/bin/env python3
 """SpiderVenomn - launch the game.
 
-    python main.py                 play
-    python main.py --selftest      headless smoke test of every hero/city/boss
-    python main.py --screenshots D save screenshots into directory D (with --selftest)
+    uv run spidervenomn                 play
+    uv run spidervenomn --selftest      headless smoke test of every hero/city/boss
+    uv run spidervenomn --selftest --screenshots D   also save screenshots into D
 """
 import argparse
 import os

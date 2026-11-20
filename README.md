@@ -5,7 +5,7 @@ A 2D superhero platformer for Ubuntu 24.04. You play with the keyboard and mouse
 ## Install and play
 
 ```bash
-./install.sh   # one-off: sets up Python + pygame-ce and adds SpiderVenomn to your app menu
+./install.sh   # one-off: installs uv if needed, syncs Python + pygame-ce, adds SpiderVenomn to your app menu
 ./run.sh       # play (or launch "SpiderVenomn" from the Ubuntu app grid)
 ```
 
@@ -59,8 +59,13 @@ Each boss gets angry at half health and fights faster. Your progress is saved in
 
 ## For developers
 
+The project is managed with [uv](https://docs.astral.sh/uv/): dependencies live in `pyproject.toml`, exact versions in `uv.lock`, the Python version in `.python-version` (3.14), and the code in `src/spidervenomn/`.
+
 ```bash
-.venv/bin/python main.py --selftest --screenshots shots
+uv sync                                            # create/update .venv
+uv run spidervenomn                                # play
+uv run spidervenomn --selftest --screenshots shots # smoke test
+uv add <package>                                   # add a dependency
 ```
 
-This runs a headless smoke test. A bot walks every city, every hero fights every boss, and the test saves screenshots.
+The selftest runs a headless smoke test. A bot walks every city, every hero fights every boss, and the test saves screenshots.

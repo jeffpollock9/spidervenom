@@ -3,7 +3,6 @@
 set -e
 DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 cd "$DIR"
-[ -x .venv/bin/python ] || ./install.sh
-.venv/bin/python -m pip install --quiet pyinstaller
-.venv/bin/python -m PyInstaller --onefile --windowed --name spidervenomn --clean --noconfirm main.py
+uv run --group build pyinstaller --onefile --windowed --name spidervenomn --clean --noconfirm \
+    --paths src src/spidervenomn/__main__.py
 echo "Built: $DIR/dist/spidervenomn"
