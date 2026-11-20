@@ -7,7 +7,7 @@ from .physics import Body
 from .settings import TILE
 
 STYLE_FOR_CITY = {"lo": "neon", "supercity": "robot", "darkvenom": "symbiote",
-                  "stalbans": "thug", "london": "goblin"}
+                  "stalbans": "thug", "london": "goblin", "ninjahouse": "ninja"}
 
 
 class Enemy:
@@ -94,7 +94,7 @@ class Enemy:
                     sx, sy = b.cx + self.facing * 16, b.y + b.h * 0.4
                     ang = math.atan2(target.body.cy - sy, target.body.cx - sx)
                     spd = 420
-                    kind = "spit" if self.style == "symbiote" else "bullet"
+                    kind = {"symbiote": "spit", "ninja": "shuriken"}.get(self.style, "bullet")
                     world.projectiles.append(Projectile(sx, sy, math.cos(ang) * spd, math.sin(ang) * spd,
                                                         "enemy", kind, 9, 5, life=2.5))
                     world.audio.play("shoot")

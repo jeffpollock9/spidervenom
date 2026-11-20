@@ -38,6 +38,20 @@ def draw_text(surf, text, size, colour=WHITE, pos=(0, 0), anchor="topleft",
     return rect
 
 
+def fit_size(text, size, max_w, min_size=12):
+    """Largest font size <= size at which text fits in max_w pixels."""
+    while size > min_size and font(size).size(text)[0] > max_w:
+        size -= 1
+    return size
+
+
+def draw_text_fit(surf, text, size, colour, pos, anchor, max_w, **kw):
+    return draw_text(surf, text, fit_size(text, size, max_w), colour, pos, anchor, **kw)
+
+
+NUMBER_WORDS = ["ZERO", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN"]
+
+
 class Button:
     def __init__(self, rect, label, colour=(200, 30, 40)):
         self.rect = pygame.Rect(rect)

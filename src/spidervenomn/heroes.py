@@ -22,6 +22,9 @@ HERO_INFO = {
                powers=["LMB: Slap", "RMB / SHIFT: Turn into a MONSTER", "Monster: giant claws, tough hide"]),
     "ghost": dict(name="Ghost-Spider", colour=(240, 80, 170),
                   powers=["LMB: Kick", "RMB: Web shot", "Hold JUMP in the air: Glide"]),
+    "ninjas": dict(name="Ninja Kids", colour=(255, 170, 40),
+                   powers=["LMB: Team ninja kick", "RMB: Shuriken volley (x4)", "JUMP in the air: Team boost (x2)",
+                           "SHIFT: Swap leader", "F (full energy): NINJA STORM"]),
 }
 HERO_KEYS = list(HERO_INFO)
 
@@ -57,6 +60,9 @@ class Hero:
         self.dead = False
         self.gliding = False
         self.message = None
+        self.resting = None   # the bed we're asleep in
+        self.rest_t = 0.0
+        self.down_prev = False
 
     # ------------------------------------------------------------ helpers
     @property
@@ -129,6 +135,17 @@ class Hero:
             self.message[1] -= dt
             if self.message[1] <= 0:
                 self.message = None
+
+        down_tap = ctl.down and not self.down_prev
+        self.down_prev = ctl.down
+        if self.resting is not None:
+            self.update_rest(ctl, dt)
+            return
+        if down_tap and self.body.on_ground:
+            bed = self.world.bed_near(self.body)
+            if bed is not None:
+                self.start_rest(bed)
+                return
 
         self.move(ctl, dt)
         if self.body.y < 0:  # the top of the screen is a ceiling: never vanish off it
@@ -207,6 +224,7 @@ class Hero:
     def take_damage(self, amount, from_x=None, knock=300):
         if self.invuln > 0 or self.invisible or self.dead:
             return False
+        self.wake()
         amount *= self.taken_mult
         self.hp -= amount
         self.invuln = 0.9
@@ -237,20 +255,69 @@ class Hero:
     def on_fall(self):
         pass
 
+    # ------------------------------------------------------------ resting in a bed
+    def start_rest(self, bed):
+        self.on_rest()
+        self.resting = bed
+        self.rest_t = 0.0
+        b = self.body
+        b.vx = b.vy = 0
+        b.x = bed["rect"].centerx - b.w / 2
+        self.world.audio.play("select")
+
+    def on_rest(self):
+        """Stop any ongoing power before lying down."""
+
+    def update_rest(self, ctl, dt):
+        self.rest_t += dt
+        self.hp = min(self.max_hp, self.hp + 45 * dt)
+        self.energy = min(100.0, self.energy + 45 * dt)
+        if int(self.rest_t * 1.5) != int((self.rest_t - dt) * 1.5):
+            r = self.resting["rect"]
+            self.world.popup(r.left + 30, r.top - 10, "z" if int(self.rest_t * 1.5) % 2 else "Z", (200, 220, 255))
+        if self.rest_t > 0.3 and (ctl.left or ctl.right or ctl.jump_pressed or ctl.primary_pressed
+                                  or ctl.special_pressed or ctl.alt_pressed):
+            self.wake()
+
+    def wake(self):
+        if self.resting is None:
+            return
+        self.resting = None
+        if self.hp >= self.max_hp:
+            self.say("Fully rested!")
+
     # ------------------------------------------------------------ draw
     def draw_kwargs(self):
         aim = None
         return dict(aim=aim, punch=1 - self.punch_t / 0.25 if self.punch_t > 0 else 0.0)
 
+    def render_sprite(self, surf, cx, bottom, facing, **kw):
+        art.draw_hero(surf, self.key, cx, bottom, facing, self.t, **kw)
+
+    def draw_resting(self, surf, cam):
+        r = self.resting["rect"].move(-cam[0], -cam[1])
+        size = 220
+        tmp = pygame.Surface((size, size), pygame.SRCALPHA)
+        kw = self.draw_kwargs()
+        kw.update(aim=None, punch=0.0)
+        self.render_sprite(tmp, size // 2, size - 10, 1, moving=False, air=False, glide=False, **kw)
+        lying = pygame.transform.rotate(tmp, 90)  # head to the left, on the pillow
+        surf.blit(lying, (r.left + 12 - (size - 10 - self.body.h), r.bottom - 34 - size // 2))
+        art.draw_blanket(surf, r, self.resting["colour"], sleeper=True)
+
     def draw(self, surf, cam):
+        if self.resting is not None:
+            self.draw_behind(surf, cam)
+            self.draw_resting(surf, cam)
+            return
         if self.invuln > 0 and int(self.invuln * 20) % 2 == 0 and not self.dead:
             return
         b = self.body
         size = 220
         tmp = pygame.Surface((size, size), pygame.SRCALPHA)
-        art.draw_hero(tmp, self.key, size // 2, size - 10, self.facing, self.t,
-                      moving=abs(b.vx) > 20 and b.on_ground, air=not b.on_ground,
-                      glide=self.gliding, **self.draw_kwargs())
+        self.render_sprite(tmp, size // 2, size - 10, self.facing,
+                           moving=abs(b.vx) > 20 and b.on_ground, air=not b.on_ground,
+                           glide=self.gliding, **self.draw_kwargs())
         if self.invisible:
             shimmer = 55 + int(math.sin(self.t * 12) * 25)
             tmp.set_alpha(shimmer)
@@ -328,6 +395,9 @@ class Swinger(Hero):
     def on_fall(self):
         self.anchor = None
 
+    def on_rest(self):
+        self.anchor = None
+
     def draw_extra(self, surf, cam):
         if self.anchor:
             sx, sy = self.shoulder()
@@ -400,6 +470,11 @@ class Venom(Swinger):
     def on_fall(self):
         super().on_fall()
         self.flying = False
+
+    def on_rest(self):
+        super().on_rest()
+        self.flying = False
+        self.wing_t = 0.0
 
     def draw_behind(self, surf, cam):
         if self.flying or self.wing_t > 0:
@@ -559,6 +634,10 @@ class Spin(Hero):
             kw["punch"] = 0.5
         return kw
 
+    def on_rest(self):
+        self.dash_t = 0.0
+        self.invisible = False
+
 
 class MJ(Hero):
     key = "mj"
@@ -649,5 +728,199 @@ class GhostSpider(Hero):
             self.world.audio.play("web")
 
 
+class NinjaKids(Hero):
+    """Ashton, Payton, Brighton and Paxton, moving and fighting as one unit.
+
+    The leader is the hitbox you steer; the other three follow along the leader's path
+    and join in every attack."""
+    key = "ninjas"
+    w, h = 26, 52
+    speed = 350.0
+    jump = 820.0
+    max_hp = 120
+    melee_damage = 22
+    melee_range = 60
+    melee_cd = 0.32
+    storm_time = 1.4
+    lag = 7  # frames of path between each kid
+
+    def __init__(self, world, x, y):
+        super().__init__(world, x, y)
+        self.order = [0, 1, 2, 3]
+        self.trail = []
+        self.boosts = 2
+        self.storm_t = 0.0
+        self.storm_hits = set()
+        self.storm_boss = False
+        self.idle_spread = 0.0
+
+    @property
+    def leader_name(self):
+        return art.NINJA_KIDS[self.order[0]][0]
+
+    # -------------------------------------------------------------- the followers
+    def followers(self):
+        """[(kid index, x, bottom, facing, moving, air)] for the three kids behind the leader."""
+        out = []
+        b = self.body
+        for slot in range(1, 4):
+            i = len(self.trail) - 1 - slot * self.lag
+            x, bottom, facing, moving, air = self.trail[max(0, i)] if self.trail else \
+                (b.cx, b.bottom, self.facing, False, False)
+            x -= self.facing * 18 * slot * self.idle_spread
+            out.append((self.order[slot], x, bottom, facing, moving, air))
+        return out
+
+    def update(self, ctl, dt):
+        super().update(ctl, dt)
+        b = self.body
+        moving = abs(b.vx) > 20 and b.on_ground
+        self.idle_spread += ((0.0 if abs(b.vx) > 20 else 1.0) - self.idle_spread) * min(1.0, 5 * dt)
+        self.trail.append((b.cx, b.bottom, self.facing, moving, not b.on_ground))
+        del self.trail[:-4 * self.lag - 2]
+        if b.on_ground:
+            self.boosts = 2
+        if self.storm_t > 0:
+            self.update_storm(dt)
+
+    # -------------------------------------------------------------- powers
+    def move(self, ctl, dt):
+        b = self.body
+        if ctl.jump_pressed and not b.on_ground and self.coyote <= 0 and self.boosts > 0:
+            # a teammate launches the leader for another jump
+            self.boosts -= 1
+            b.vy = -self.jump * 0.9
+            self.jump_buf = 0.0
+            kid = self.order[2 - self.boosts]  # first boost from the 2nd kid, then the 3rd
+            col = art.ninja_kid_style(kid)["torso"]
+            self.world.burst(b.cx, b.bottom, col, 12, 240)
+            self.world.audio.play("jump")
+        super().move(ctl, dt)
+
+    def primary(self, ctl):
+        if self.cd <= 0 and ctl.primary_pressed:
+            self.melee(sound="punch")
+
+    def kid_hand(self, kid_x, bottom, kid):
+        return kid_x, bottom - art.NINJA_KIDS[kid][2] * 0.62
+
+    def special(self, ctl, dt):
+        if ctl.special_pressed and self.energy >= 10 and self.cd <= 0:
+            self.energy -= 10
+            self.cd = 0.35
+            self.shoot("shuriken", 900, 8, 7, life=1.0)
+            for kid, x, bottom, *_ in self.followers():
+                hx, hy = self.kid_hand(x, bottom, kid)
+                ax, ay = self.world_aim
+                ang = math.atan2(ay - hy, ax - hx)
+                self.world.projectiles.append(Projectile(hx, hy, math.cos(ang) * 900, math.sin(ang) * 900,
+                                                         "player", "shuriken", 8, 7, life=1.0))
+            self.world.audio.play("web")
+
+    def alt(self, ctl, dt):
+        if ctl.alt_pressed:
+            self.order = self.order[1:] + self.order[:1]
+            self.world.audio.play("select")
+            self.say(f"{self.leader_name} leads!")
+
+    def info_line(self):
+        if self.storm_t > 0:
+            return "NINJA STORM!"
+        if self.energy >= 100:
+            return "F: STORM READY!"
+        return f"LEADER: {self.leader_name.upper()}"
+
+    def ultimate(self):
+        if self.storm_t > 0:
+            return
+        if self.energy < 100:
+            self.say("Need full energy!")
+            return
+        self.energy = 0
+        self.storm_t = self.storm_time
+        self.storm_hits = set()
+        self.storm_boss = False
+        self.invuln = max(self.invuln, self.storm_time + 0.3)
+        self.world.audio.play("roar")
+        self.world.shake(12)
+        self.world.banner("NINJA STORM!", 1.2)
+
+    def storm_lanes(self):
+        """Screen-space (x, y, direction, kid) of the four kids zipping across the screen."""
+        p = 1 - self.storm_t / self.storm_time
+        from .settings import WIDTH
+        out = []
+        for lane, kid in enumerate(self.order):
+            d = 1 if lane % 2 == 0 else -1
+            x = -120 + p * (WIDTH + 240)
+            if d < 0:
+                x = WIDTH - x
+            out.append((x, 230 + lane * 120, d, kid))
+        return out
+
+    def update_storm(self, dt):
+        w = self.world
+        self.storm_t = max(0.0, self.storm_t - dt)
+        xs = [w.cam_x + x for x, *_ in self.storm_lanes()]
+        for e in list(w.enemies):
+            if e.uid not in self.storm_hits and any(abs(e.body.cx - x) < 50 for x in xs):
+                self.storm_hits.add(e.uid)
+                e.hurt(w, 70, 1 if e.body.cx > self.body.cx else -1, 450)
+        boss = w.boss
+        if not self.storm_boss and self.storm_t < self.storm_time / 2:
+            self.storm_boss = True
+            if boss and boss.active and not boss.dead and not boss.intangible and \
+                    w.cam_x - 50 < boss.body.cx < w.cam_x + 1330:
+                boss.hurt(w, boss.max_hp * 0.15, 1 if boss.body.cx > self.body.cx else -1)
+        if int(self.storm_t * 30) % 2:
+            w.shake(4)
+
+    def on_fall(self):
+        self.trail.clear()
+
+    def start_rest(self, bed):
+        super().start_rest(bed)
+        self.trail.clear()
+
+    # -------------------------------------------------------------- drawing
+    def render_sprite(self, surf, cx, bottom, facing, moving=False, air=False, aim=None, punch=0.0, **_):
+        art.draw_ninja_kid(surf, self.order[0], cx, bottom, facing, self.t, moving, air, aim, punch)
+
+    def draw_behind(self, surf, cam):
+        if self.storm_t > 0:
+            return
+        punch = 1 - self.punch_t / 0.25 if self.punch_t > 0 else 0.0
+        throwing = self.attack_face > 0 and self.cd > 0 and self.punch_t <= 0
+        for slot, (kid, x, bottom, facing, moving, air) in reversed(list(enumerate(self.followers()))):
+            if self.resting is not None:  # the others wait at the foot of the bed
+                r = self.resting["rect"]
+                x, bottom, facing, moving, air = r.right + 14 + slot * 16, r.bottom, -1, False, False
+            aim = None
+            if throwing:
+                hx, hy = self.kid_hand(x, bottom, kid)
+                aim = math.atan2(self.world_aim[1] - hy, self.world_aim[0] - hx)
+            art.draw_ninja_kid(surf, kid, x - cam[0], bottom - cam[1], self.facing if punch or aim else facing,
+                               self.t + slot, moving, air, aim, punch)
+
+    def draw(self, surf, cam):
+        if self.storm_t > 0:
+            self.draw_storm(surf)
+            return
+        super().draw(surf, cam)
+
+    def draw_storm(self, surf):
+        for x, y, d, kid in self.storm_lanes():
+            col = art.ninja_kid_style(kid)["torso"]
+            for k in range(6):
+                pygame.draw.line(surf, col, (x - d * (20 + k * 30), y - 40 + k * 7), (x - d * (60 + k * 30), y - 40 + k * 7), 3)
+            art.draw_ninja_kid(surf, kid, x, y, d, self.t * 3, moving=True, punch=0.6, scale=1.3)
+
+    def draw_kwargs(self):
+        kw = super().draw_kwargs()
+        if self.attack_face > 0 and self.cd > 0 and self.punch_t <= 0:
+            kw["aim"] = self.aim_angle
+        return kw
+
+
 HERO_CLASSES = {"spiderman": SpiderMan, "venom": Venom, "harry": Harry,
-                "spin": Spin, "mj": MJ, "ghost": GhostSpider}
+                "spin": Spin, "mj": MJ, "ghost": GhostSpider, "ninjas": NinjaKids}

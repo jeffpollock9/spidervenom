@@ -68,7 +68,8 @@ class Projectile:
             world.burst(self.x, self.y, (110, 70, 30), 10)
             world.audio.play("splat")
         else:
-            col = {"web": WHITE, "symbiote": (30, 30, 40), "bullet": YELLOW}.get(self.kind, ORANGE)
+            col = {"web": WHITE, "symbiote": (30, 30, 40), "bullet": YELLOW,
+                   "shuriken": (200, 205, 215)}.get(self.kind, ORANGE)
             world.burst(self.x, self.y, col, 6)
 
     def draw(self, surf, cam):
@@ -120,6 +121,17 @@ class Projectile:
             flap = math.sin(self.age * 30) * 8
             pygame.draw.polygon(surf, (60, 60, 70), [(x - 16, y - flap), (x, y + 4), (x + 16, y - flap), (x, y - 4)])
             pygame.draw.circle(surf, (255, 230, 60), (x, y), 3)
+        elif k == "shuriken":
+            r = self.radius + 3
+            a0 = self.age * 25
+            pts = []
+            for i in range(8):
+                a = a0 + i * math.pi / 4
+                rr = r if i % 2 == 0 else r * 0.35
+                pts.append((x + math.cos(a) * rr, y + math.sin(a) * rr))
+            pygame.draw.polygon(surf, (200, 205, 215), pts)
+            pygame.draw.polygon(surf, (60, 60, 70), pts, 1)
+            pygame.draw.circle(surf, (40, 40, 50), (x, y), 2)
         elif k == "spit":
             pygame.draw.circle(surf, (150, 255, 80), (x, y), self.radius)
         else:

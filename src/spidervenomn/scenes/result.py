@@ -1,7 +1,7 @@
 import pygame
 
 from .. import art
-from ..core import Scene, Button, draw_text
+from ..core import Scene, Button, draw_text, NUMBER_WORDS
 from ..levels import CITIES, CITY_IDS
 from ..settings import WIDTH, HEIGHT, WHITE, BLACK
 
@@ -73,7 +73,7 @@ class ResultScene(Scene):
         draw_text(surf, f"TIME {int(w.t) // 60}:{int(w.t) % 60:02d}", 32, WHITE, (WIDTH // 2, 275), "center")
         surf.blit(art.hero_preview(w.hero_key, 150, self.t if self.won else 0), (WIDTH // 2 - 75, 300))
         if self.legend:
-            draw_text(surf, "ALL FIVE CITIES SAVED - YOU ARE A LEGEND!", 44, (255, 215, 0),
+            draw_text(surf, f"ALL {NUMBER_WORDS[len(CITIES)]} CITIES SAVED - YOU ARE A LEGEND!", 44, (255, 215, 0),
                       (WIDTH // 2, 660), "center", outline=BLACK)
         for b in self.buttons:
             b.draw(surf)

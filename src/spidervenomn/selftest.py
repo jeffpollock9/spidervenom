@@ -10,7 +10,7 @@ import pygame
 from .audio import Audio
 from .core import Controls, Game
 from .heroes import HERO_KEYS
-from .levels import CITIES
+from .levels import CITIES, CITY_IDS
 from .settings import TILE, GROUND_ROW, WIDTH, HEIGHT
 
 DT = 1 / 60
@@ -219,7 +219,114 @@ def run(shots_dir=None):
     if p.flying:
         failures.append("venom did not land after flying down")
 
-    # Losing works
+    # The Ninja Kids: team boost, shuriken volley, swapping leader and the Ninja Storm
+    house = CITY_IDS.index("ninjahouse")
+    w = World(house, "ninjas", audio)
+    p = w.player
+    for f in range(40):
+        c = Controls(); c.right = f < 20; c.aim = (p.body.cx + 300, p.body.cy)
+        w.update(c, DT)
+    c = Controls(); c.special_pressed = True; c.aim = (p.body.cx + 300, p.body.cy)
+    before = len(w.projectiles)
+    w.update(c, DT)
+    stars = sum(1 for pr in w.projectiles if pr.kind == "shuriken") - before
+    if stars != 4:
+        failures.append(f"ninja volley threw {stars} shuriken, expected 4")
+    c = Controls(); c.alt_pressed = True; c.aim = (0, 0)
+    w.update(c, DT)
+    if p.leader_name != "Payton":
+        failures.append(f"swap leader gave {p.leader_name}")
+    if shots_dir:
+        shot(surf, w, shots_dir, "ninjas_house")
+    # jump, then two boosts in the air
+    c = Controls(); c.jump_pressed = c.jump_held = True; c.aim = (0, 0)
+    w.update(c, DT)
+    peak_normal = p.body.y
+    for f in range(12):
+        c = Controls(); c.jump_held = True; c.aim = (0, 0)
+        w.update(c, DT)
+    for k in range(2):
+        c = Controls(); c.jump_pressed = c.jump_held = True; c.aim = (0, 0)
+        w.update(c, DT)
+        for f in range(10):
+            c = Controls(); c.jump_held = True; c.aim = (0, 0)
+            w.update(c, DT)
+    print(f"ninja boosts: {p.boosts} left, y {p.body.y:.0f}")
+    if p.boosts != 0 or p.body.y > peak_normal - 150:
+        failures.append("ninja team boost did not work")
+    for f in range(90):
+        w.update(Controls(), DT)
+    view = pygame.Rect(int(w.cam_x), 0, WIDTH, HEIGHT)
+    for k in range(4):
+        w.spawn_enemy("walker", p.body.x + 200 + k * 140, GROUND_ROW * TILE, "ninja")
+    p.energy = 100
+    c = Controls(); c.ult_pressed = True; c.aim = (0, 0)
+    w.update(c, DT)
+    for f in range(20):
+        w.update(Controls(), DT)
+    if shots_dir:
+        shot(surf, w, shots_dir, "ninja_storm")
+    for f in range(90):
+        w.update(Controls(), DT)
+    left = sum(e.body.rect.colliderect(view) for e in w.enemies)
+    print(f"ninja storm: {left} enemies left on screen")
+    if left:
+        failures.append("ninja storm left enemies on screen")
+
+    # Resting in a bed in the Ninja Kids' house heals you; moving wakes you up
+    for hk in ("ninjas", "venom", "mj"):
+        w = World(house, hk, audio)
+        w.enemies.clear()
+        p = w.player
+        bed = w.beds[0]
+        p.body.x = bed["rect"].centerx - p.body.w / 2 - 60
+        p.body.y = bed["rect"].bottom - p.body.h - 4
+        for f in range(20):
+            c = Controls(); c.right = f < 6; c.aim = (0, 0)
+            w.update(c, DT)
+        p.hp = 10
+        c = Controls(); c.down = True; c.aim = (0, 0)
+        w.update(c, DT)
+        if p.resting is None:
+            failures.append(f"{hk} could not get into bed")
+            continue
+        for f in range(150):
+            c = Controls(); c.down = True; c.aim = (0, 0)
+            w.update(c, DT)
+        if shots_dir and hk == "ninjas":
+            shot(surf, w, shots_dir, "ninjas_rest")
+        healed = p.hp
+        c = Controls(); c.right = True; c.aim = (0, 0)
+        w.update(c, DT)
+        print(f"{hk} rested: hp 10 -> {healed:.0f}, awake={p.resting is None}")
+        if healed < 100 or p.resting is not None:
+            failures.append(f"{hk} bed rest broken (hp {healed:.0f}, resting={p.resting is not None})")
+
+    # Trampolines in the ninja gym bounce you up high
+    w = World(house, "spiderman", audio)
+    w.enemies.clear()
+    p = w.player
+    tr = w.trampolines[0]["rect"]
+    p.body.x = tr.centerx - p.body.w / 2
+    p.body.y = tr.bottom - p.body.h - 30
+    low = p.body.y
+    for f in range(40):
+        c = Controls(); c.jump_held = True; c.aim = (0, 0)
+        w.update(c, DT)
+        low = min(low, p.body.y)
+    print(f"trampoline: rose to y={low:.0f}")
+    if low > tr.bottom - 300:
+        failures.append("trampoline did not bounce")
+    if shots_dir:
+        w = World(house, "ninjas", audio)
+        for col in (60, 112, 168):
+            w.player.body.x = col * TILE
+            w.player.body.y = 5 * TILE
+            w.cam_x = col * TILE - WIDTH / 2
+            for f in range(30):
+                w.update(Controls(), DT)
+            shot(surf, w, shots_dir, f"house_{col}")
+
     w = World(0, "spiderman", audio)
     w.player.take_damage(1000)
     for f in range(200):

@@ -1,6 +1,6 @@
 # SpiderVenomn
 
-A 2D superhero platformer for Ubuntu 24.04. You play with the keyboard and mouse. Pick one of six heroes, choose one of five cities, fight your way across it and beat the boss at the end.
+A 2D superhero platformer for Ubuntu 24.04. You play with the keyboard and mouse. Pick one of seven heroes, choose one of six cities, fight your way across it and beat the boss at the end.
 
 ## Install and play
 
@@ -40,10 +40,13 @@ You can also jump on enemies' heads to squash them.
 | Spin | Kick (2.5× damage while invisible) | Go invisible | Spin dash |
 | MJ | Slap | Turn into a monster (giant claws, tough hide) | Same as right click |
 | Ghost-Spider | Kick | Web shot | Hold jump in mid-air to glide |
+| Ninja Kids | Team ninja kick | Shuriken volley (one from each kid) | Swap who leads |
 
 Venom can fly: press **jump in mid-air** and he sprouts big black symbiote wings. Hold jump to climb, **S / down** to drop, A/D to steer. He can fly for as long as you like, and the wings fold away when you land.
 
 Venom also has an ultimate. When his energy bar is full, press **F** for a **symbiote blast**: symbiotes explode everywhere, every enemy on screen is wiped out, and a boss loses a fifth of its health.
+
+The **Ninja Kids** are Ashton, Payton, Brighton and Paxton, and you control all four as one team. You steer the leader and the other three run along behind, copying every jump. Press **jump in mid-air** and a teammate boosts the leader up again, up to twice before you land. With full energy, **F** starts the **Ninja Storm**: all four kids race across the screen and knock out every enemy they pass. A boss loses 15% of its health.
 
 Powers use the blue energy bar, which refills over time. Blue lightning pickups refill it completely, and red-cross pickups restore health.
 
@@ -54,6 +57,9 @@ Powers use the blue energy bar, which refills over time. Blue lightning pickups 
 3. **Dark Venom**: a world of black goo with ooze pits. Boss: **Venom** (tendril lash, ground spikes, leaps)
 4. **St Albans**: cathedral, clock tower and Tudor streets. Boss: **Rhino** (charges at you, and hitting a wall stuns him so he takes double damage)
 5. **London**: Big Ben, red buses and the Thames. Boss: **Green Goblin** (glider swoops, pumpkin bombs, homing razor bats)
+6. **Ninja Kids House**: the living room, kitchen, upstairs bedrooms and the ninja training gym (with trampolines), then out into the back garden. Boss: **Shadow Ninja** (shuriken fans, vanishes in smoke and reappears behind you to slash, dashes, calls in ninja henchmen when angry)
+
+In the Ninja Kids House you can **rest in a bed**: stand at one and press **S / down**. You lie down and your health and energy refill. Move, jump or attack to get up again. Getting hit wakes you up too.
 
 Each boss gets angry at half health and fights faster. Your progress is saved in `~/.local/share/spidervenomn/save.json`.
 

@@ -24,6 +24,11 @@ class World:
         level = build_level(city_idx)
         self.level = level
         self.tm = TileMap(level.rows)
+        self.tm.rooms = level.rooms
+        self.beds = [dict(rect=pygame.Rect(c * TILE, r * TILE - 40, 3 * TILE, 40), colour=col)
+                     for c, r, col in level.beds]
+        self.trampolines = [dict(rect=pygame.Rect(c * TILE, r * TILE - 22, n * TILE, 22), squash=0.0)
+                            for c, r, n in level.trampolines]
         self.tiles_surf = art.render_tiles(self.tm, self.city)
         self.sky, self.layers = art.make_background(self.city)
         self.platforms = [MovingPlatform(x, y, w, dx, dy, per, phase=i)
@@ -67,12 +72,35 @@ class World:
         feet = pygame.Rect(rect.left, rect.bottom - 6, rect.width, 8)
         return any(h.kind == "puddle" and h.rect.colliderect(feet) for h in self.hazards)
 
+    def bed_near(self, body):
+        """The bed the hero is standing at (same floor, overlapping), or None."""
+        for bed in self.beds:
+            r = bed["rect"]
+            if abs(body.bottom - r.bottom) < 6 and r.left - 10 < body.cx < r.right + 10:
+                return bed
+        return None
+
+    def bounce_trampolines(self, dt):
+        p = self.player
+        b = p.body
+        for tr in self.trampolines:
+            tr["squash"] = max(0.0, tr["squash"] - 4 * dt)
+            r = tr["rect"]
+            if b.on_ground and abs(b.bottom - r.bottom) < 6 and r.left + 6 < b.cx < r.right - 6 \
+                    and getattr(p, "resting", None) is None:
+                b.vy = -1350
+                b.on_ground = False
+                b.riding = None
+                p.coyote = 0
+                tr["squash"] = 1.0
+                self.audio.play("jump")
+
     def spawn_enemy(self, kind, x, bottom, style):
         self.enemies.append(Enemy(kind, x, bottom, style, self.city_idx))
 
     def targets(self):
         out = list(self.enemies)
-        if self.boss and self.boss.active and not self.boss.dead:
+        if self.boss and self.boss.active and not self.boss.dead and not self.boss.intangible:
             out.append(self.boss)
         return out
 
@@ -168,6 +196,7 @@ class World:
         player = self.player
         if self.state == "play":
             player.update(ctl, dt)
+            self.bounce_trampolines(dt)
         elif self.state == "won":
             from .core import Controls
             idle = Controls()
@@ -225,7 +254,8 @@ class World:
                     else:
                         player.take_damage(e.contact, e.body.cx)
             boss = self.boss
-            if boss and boss.active and not boss.dead and boss.body.rect.inflate(-16, -10).colliderect(pr):
+            if boss and boss.active and not boss.dead and not boss.intangible \
+                    and boss.body.rect.inflate(-16, -10).colliderect(pr):
                 if player.body.vy > 150 and pr.bottom < boss.body.rect.top + 20:
                     boss.hurt(self, 15, player.facing)
                     player.body.vy = -700
@@ -315,6 +345,14 @@ class World:
             pygame.draw.rect(surf, BLACK, r, 2, border_radius=4)
             for k in range(r.left + 10, r.right - 5, 20):
                 pygame.draw.circle(surf, (255, 255, 200), (k, r.centery), 3)
+        for tr in self.trampolines:
+            art.draw_trampoline(surf, tr["rect"].move(-cam[0], -cam[1]), self.t, tr["squash"])
+        for bed in self.beds:
+            r = bed["rect"].move(-cam[0], -cam[1])
+            if -200 < r.x < WIDTH + 200:
+                art.draw_bed(surf, r, bed["colour"])
+                if self.player.resting is not bed:
+                    art.draw_blanket(surf, r, bed["colour"])
         for h in self.hazards:
             if h.kind == "puddle":
                 h.draw(surf, cam)
@@ -326,6 +364,11 @@ class World:
         if self.boss and not self.boss.dead:
             self.boss.draw(surf, cam)
         self.player.draw(surf, cam)
+        p = self.player
+        bed = self.bed_near(p.body)
+        if bed and p.resting is None and self.state == "play":
+            r = bed["rect"].move(-cam[0], -cam[1])
+            draw_text(surf, "S: REST", 26, (255, 230, 120), (r.centerx, r.top - 74), "midbottom", outline=BLACK)
         for p in self.projectiles:
             p.draw(surf, cam)
         for h in self.hazards:

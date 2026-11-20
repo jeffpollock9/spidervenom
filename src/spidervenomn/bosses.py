@@ -1,4 +1,4 @@
-"""The five end-of-city bosses."""
+"""The end-of-city bosses."""
 import math
 import random
 
@@ -32,6 +32,7 @@ class Boss:
         self.dead = False
         self.slow = 0.0
         self.vuln = 1.0
+        self.intangible = False  # vanished: can't be hit and doesn't hurt on contact
         self.uid = id(self)
         self.aim_angle = 0.0
         self.arena_l = world.arena_left
@@ -418,5 +419,104 @@ class GreenGoblin(Boss):
                 self.set("hover", 1.5)
 
 
+class ShadowNinja(Boss):
+    key = "shadow_ninja"
+    name = "Shadow Ninja"
+    w, h = 56, 96
+    base_hp = 520
+    contact = 16
+
+    def throw(self, world, n):
+        b = self.body
+        tgt = self.target.body
+        base = math.atan2(tgt.cy - (b.y + 30), tgt.cx - b.cx)
+        self.aim_angle = base
+        for i in range(n):
+            a = base + (i - (n - 1) / 2) * 0.18
+            world.projectiles.append(Projectile(b.cx, b.y + 30, math.cos(a) * 560, math.sin(a) * 560,
+                                                "enemy", "shuriken", 10, 7, life=2.5))
+        world.audio.play("web")
+
+    def think(self, world, dt, speed):
+        b = self.body
+        tgt = self.target.body
+        if self.state in ("idle", "stalk"):
+            self.face_player()
+            if b.on_ground:
+                b.vx = self.facing * 170 * speed
+            if self.timer <= 0:
+                b.vx = 0
+                r = random.random()
+                ninjas = sum(1 for e in world.enemies if e.style == "ninja")
+                if self.phase == 2 and r < 0.2 and ninjas < 3:
+                    self.set("summon", 0.6)
+                elif r < 0.5:
+                    self.set("throw_wind", 0.45)
+                elif r < 0.75:
+                    self.set("vanish", 0.6)
+                    self.intangible = True
+                    world.burst(b.cx, b.cy, (70, 70, 80), 24, 300)
+                    world.audio.play("invis")
+                else:
+                    self.set("dash_wind", 0.5)
+        elif self.state == "throw_wind":
+            self.face_player()
+            if self.timer <= 0:
+                self.throw(world, 3 if self.phase == 1 else 5)
+                self.set("throw", 0.35)
+        elif self.state == "throw":
+            if self.timer <= 0:
+                if self.phase == 2 and random.random() < 0.5:
+                    self.throw(world, 3)
+                self.set("stalk", 1.0)
+        elif self.state == "vanish":
+            b.vx = 0
+            if self.timer <= 0:
+                # reappear behind the player and slash
+                side = -1 if tgt.cx > (self.arena_l + self.arena_r) / 2 else 1
+                if random.random() < 0.6:
+                    side = -self.target.facing
+                nx = tgt.cx + side * 110 - b.w / 2
+                b.x = max(self.arena_l + 10, min(nx, self.arena_r - b.w - 10))
+                b.y = self.floor - b.h
+                b.vy = 0
+                self.intangible = False
+                self.face_player()
+                world.burst(b.cx, b.cy, (70, 70, 80), 24, 300)
+                r0 = pygame.Rect(0, 0, 150, 90)
+                r0.bottom = int(b.bottom)
+                if self.facing > 0:
+                    r0.left = int(b.cx)
+                else:
+                    r0.right = int(b.cx)
+                world.hazards.append(Hazard(r0, "swipe", 18, life=0.2, delay=0.35))
+                self.set("slash", 0.7)
+        elif self.state == "slash":
+            if self.timer <= 0.35 and self.timer + dt * speed > 0.35:
+                world.audio.play("punch")
+            if self.timer <= 0:
+                self.set("stalk", 1.0)
+        elif self.state == "dash_wind":
+            self.face_player()
+            if int(self.t * 20) % 2:
+                world.burst(b.cx - self.facing * 20, b.bottom, (120, 120, 130), 1)
+            if self.timer <= 0:
+                self.set("dash", 0.7)
+                world.audio.play("invis")
+        elif self.state == "dash":
+            b.vx = self.facing * (850 if self.phase == 1 else 1000)
+            if b.hit_wall or self.timer <= 0:
+                b.vx = 0
+                self.set("stalk", 1.0)
+        elif self.state == "summon":
+            if self.timer <= 0:
+                for d in (-1, 1):
+                    x = max(self.arena_l + 40, min(b.cx + d * 140, self.arena_r - 60))
+                    world.spawn_enemy("walker", x, self.floor, "ninja")
+                    world.burst(x, self.floor - 30, (70, 70, 80), 16, 260)
+                world.audio.play("invis")
+                self.set("stalk", 1.2)
+
+
 BOSS_CLASSES = {"spider_dino": SpiderDino, "mr_poo": MrPoo, "venom": VenomBoss,
-                "rhino": Rhino, "goblin": GreenGoblin}
+                "rhino": Rhino, "goblin": GreenGoblin, "shadow_ninja": ShadowNinja}

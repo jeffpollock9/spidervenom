@@ -34,14 +34,23 @@ CITIES = [
          sky=((40, 40, 90), (240, 140, 90)),
          ground_top=(170, 170, 160), ground=(95, 95, 100), ground_line=(70, 70, 75),
          plank=(160, 30, 40)),
+    dict(id="ninjahouse", name="Ninja Kids House", blurb="Home of the Ninja Kids",
+         boss="shadow_ninja", boss_name="Shadow Ninja", music="ninjahouse",
+         enemy="ninja", hazard=None, moving=False, layout="house",
+         sky=((255, 150, 110), (120, 90, 170)),
+         ground_top=(190, 135, 85), ground=(150, 100, 60), ground_line=(110, 70, 40),
+         plank=(170, 120, 75)),
 ]
 
 CITY_IDS = [c["id"] for c in CITIES]
 
 
 class Level:
-    def __init__(self, rows, spawns, platforms, arena_col, start):
+    def __init__(self, rows, spawns, platforms, arena_col, start, rooms=None, beds=(), trampolines=()):
         self.rows = rows
+        self.rooms = rooms            # house levels: [{"c0", "c1", "kind", "floor"}] for the backdrop
+        self.beds = list(beds)        # [(col, floor_row, blanket colour)] - rest here with S / DOWN
+        self.trampolines = list(trampolines)  # [(col, floor_row, width_cols)]
         self.spawns = spawns          # list of (kind, x, y) in pixels
         self.platforms = platforms    # list of (x, y, w, dx, dy, period)
         self.arena_col = arena_col
@@ -50,6 +59,8 @@ class Level:
 
 def build_level(idx):
     city = CITIES[idx]
+    if city.get("layout") == "house":
+        return build_house_level(idx)
     rng = random.Random(4242 + idx * 97)
     main_cols = 150 + idx * 12
     cols = main_cols + ARENA_COLS
@@ -177,3 +188,114 @@ def build_level(idx):
 
     rows = ["".join(r) for r in g]
     return Level(rows, spawns, platforms, a, (3 * TILE, (GROUND_ROW - 2) * TILE))
+
+
+def _add_arena(g, spawns, a):
+    """The standard one-screen boss arena starting at column a."""
+    for i in range(ARENA_COLS):
+        for r in range(GROUND_ROW, ROWS):
+            g[r][a + i] = "#"
+    for i in range(5, 10):
+        g[11][a + i] = "="
+        g[11][a + ARENA_COLS - 1 - i] = "="
+    for i in range(13, ARENA_COLS - 13):
+        g[8][a + i] = "="
+    spawns.append(("boss", (a + ARENA_COLS - 8) * TILE, GROUND_ROW * TILE))
+    spawns.append(("health", (a + 16) * TILE, 8 * TILE))
+
+
+def build_house_level(idx):
+    """The Ninja Kids' house: living room, kitchen, upstairs bedrooms, ninja gym, then the back garden."""
+    main_cols = 200
+    cols = main_cols + ARENA_COLS
+    g = [["."] * cols for _ in range(ROWS)]
+    spawns, beds, tramps = [], [], []
+    floor = [GROUND_ROW] * cols
+
+    def ground(c0, c1, h):
+        for c in range(c0, c1):
+            floor[c] = h
+            for r in range(ROWS):
+                g[r][c] = "#" if r >= h else "."
+
+    def block(c0, c1, top, bottom):
+        for c in range(c0, c1):
+            for r in range(top, bottom):
+                g[r][c] = "#"
+
+    def plank(c0, c1, r):
+        for c in range(c0, c1):
+            g[r][c] = "="
+
+    def enemy(kind, c, r=None):
+        spawns.append((kind, c * TILE + 4, (r if r is not None else floor[c]) * TILE))
+
+    def pickup(kind, c, r):
+        spawns.append((kind, c * TILE + TILE // 2, r * TILE))
+
+    H = GROUND_ROW
+    ground(0, main_cols, H)
+
+    # living room (0-44): sofa, bookshelf with shelves above
+    plank(14, 20, 13)                 # sofa cushions
+    block(30, 32, 12, H)              # bookshelf
+    plank(27, 31, 9)
+    pickup("health", 29, 9)
+    enemy("walker", 24)
+    enemy("jumper", 38)
+
+    # kitchen (44-82): worktops, an island, wall cupboards and the fridge
+    block(48, 54, 13, H)
+    block(60, 66, 13, H)
+    enemy("shooter", 62, 13)
+    plank(55, 59, 9)
+    plank(67, 71, 9)
+    pickup("energy", 57, 9)
+    block(76, 78, 12, H)              # fridge
+    enemy("walker", 57)
+    enemy("walker", 71)
+
+    # stairs up (82-104)
+    up = 11
+    for i in range(4):
+        ground(84 + i * 2, 86 + i * 2, H - 1 - i)
+    ground(92, 152, up)
+    enemy("walker", 98)
+
+    # bedrooms upstairs (104-152)
+    beds.append((108, up, (240, 120, 200)))   # Payton's room
+    enemy("jumper", 118)
+    beds.append((130, up, (60, 120, 230)))    # the boys' room
+    beds.append((140, up, (60, 190, 90)))
+    block(147, 149, up - 2, up)               # chest of drawers
+    enemy("shooter", 147, up - 2)
+    enemy("walker", 135)
+    pickup("energy", 124, up - 3)
+
+    # stairs down (152-160)
+    for i in range(4):
+        ground(152 + i * 2, 154 + i * 2, up + 1 + i)
+
+    # ninja gym (160-200): trampolines, monkey bars, a warped wall, and a guest bed to nap before the boss
+    tramps.append((164, H, 3))
+    plank(168, 179, 8)                # monkey bars
+    pickup("health", 173, 8)
+    enemy("jumper", 172)
+    tramps.append((181, H, 3))
+    block(186, 188, 12, H)            # warped wall
+    enemy("walker", 190)
+    beds.append((193, H, (230, 150, 40)))
+    pickup("energy", 198, H)
+
+    # the ceiling over the whole house (the garden is open sky)
+    for c in range(main_cols - 2):
+        g[0][c] = g[1][c] = "#"
+
+    _add_arena(g, spawns, main_cols)
+
+    rooms = [dict(c0=0, c1=44, kind="living"), dict(c0=44, c1=82, kind="kitchen"),
+             dict(c0=82, c1=104, kind="stairs"), dict(c0=104, c1=126, kind="girls", floor=up),
+             dict(c0=126, c1=152, kind="bedroom", floor=up), dict(c0=152, c1=160, kind="stairs"),
+             dict(c0=160, c1=main_cols - 2, kind="gym"), dict(c0=main_cols - 2, c1=cols, kind="yard")]
+    rows = ["".join(r) for r in g]
+    return Level(rows, spawns, [], main_cols, (3 * TILE, (H - 2) * TILE), rooms, beds, tramps)

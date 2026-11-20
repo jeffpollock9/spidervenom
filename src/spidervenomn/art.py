@@ -40,7 +40,25 @@ ENEMY_STYLES = {
     "goblin": dict(head=(110, 170, 60), eyes="dots", torso=(110, 40, 140), side=(80, 20, 110),
                    legs=(110, 40, 140), boots=(60, 120, 40), arms=(110, 40, 140), gloves=(110, 170, 60),
                    hair="cap", hair_col=(110, 40, 140)),
+    "ninja": dict(head=(25, 25, 30), eyes="balaclava", torso=(28, 28, 34), side=(170, 20, 30),
+                  legs=(28, 28, 34), boots=(15, 15, 18), arms=(28, 28, 34), gloves=(15, 15, 18),
+                  headband=(200, 25, 35), belt=(170, 20, 30)),
 }
+
+
+def _ninja_kid_style(gi, hair_col, hair="short", lips=False):
+    return dict(head=SKIN, hair=hair, hair_col=hair_col, eyes="dots", lips=lips, torso=gi,
+                side=_darker(gi, 0.75), legs=_darker(gi, 0.85), boots=(30, 30, 35), arms=gi,
+                gloves=SKIN, headband=(25, 25, 30), belt=(25, 25, 30))
+
+
+# The Ninja Kids: (name, style, height). Ashton leads by default.
+NINJA_KIDS = [
+    ("Ashton", dict(gi=(40, 100, 220), hair_col=(110, 70, 35)), 54),
+    ("Payton", dict(gi=(160, 70, 210), hair_col=(235, 200, 120), hair="long", lips=True), 50),
+    ("Brighton", dict(gi=(215, 40, 40), hair_col=(150, 95, 45)), 46),
+    ("Paxton", dict(gi=(40, 175, 75), hair_col=(220, 180, 110)), 40),
+]
 
 
 def _darker(c, f=0.7):
@@ -49,6 +67,11 @@ def _darker(c, f=0.7):
 
 def _lighter(c, f=40):
     return tuple(min(255, v + f) for v in c)
+
+
+def ninja_kid_style(i):
+    name, kw, h = NINJA_KIDS[i]
+    return _ninja_kid_style(**kw)
 
 
 def _limb(surf, colour, a, b, width):
@@ -127,6 +150,8 @@ def draw_humanoid(surf, cx, bottom, h, facing, t, style, moving=False, air=False
     else:
         side.right = torso.right
     pygame.draw.rect(surf, style["side"], side, border_radius=int(4 * u))
+    if style.get("belt"):
+        pygame.draw.rect(surf, style["belt"], (torso.left, torso.bottom - int(6 * u), torso.width, max(2, int(3 * u))))
     emb = style.get("emblem")
     ec = (torso.centerx + f * 2 * u, torso.top + 7 * u)
     if emb == "spider":
@@ -155,6 +180,16 @@ def draw_humanoid(surf, cx, bottom, h, facing, t, style, moving=False, air=False
                                                       head_r * 2, head_r))
         pygame.draw.rect(surf, style["hair_col"], (head_c[0] + (0 if f > 0 else -head_r * 1.5),
                                                    head_c[1] - head_r * 0.6, head_r * 1.5, 3 * u))
+    if style.get("headband"):
+        hb = style["headband"]
+        band = pygame.Rect(0, 0, int(head_r * 2 + 2), max(2, int(3 * u)))
+        band.center = (int(head_c[0]), int(head_c[1] - 4 * u))
+        pygame.draw.rect(surf, hb, band, border_radius=2)
+        knot = (head_c[0] - f * head_r, head_c[1] - 4 * u)
+        for k, ln in ((0, 9), (1, 7)):
+            flap = math.sin(t * 9 + k * 1.3) * 3 * u
+            pygame.draw.line(surf, hb, knot, (knot[0] - f * ln * u, knot[1] + (2 + k * 4) * u + flap),
+                             max(2, int(2.5 * u)))
     eyes = style["eyes"]
     ex = head_c[0] + f * 3 * u
     ey = head_c[1] - u
@@ -308,9 +343,26 @@ def draw_symbiote_wings(surf, rx, ry, facing, t, vy=0.0, fold=1.0, L=64):
         pygame.draw.circle(surf, (230, 230, 240), (int(pts[2][0]), int(pts[2][1])), 2)
 
 
+def draw_ninja_kid(surf, i, cx, bottom, facing, t, moving=False, air=False, aim=None,
+                   punch=0.0, scale=1.0, **_):
+    draw_humanoid(surf, cx, bottom, NINJA_KIDS[i][2] * scale, facing, t, ninja_kid_style(i),
+                  moving, air, aim, punch)
+
+
+def draw_ninja_group(surf, cx, bottom, facing, t, moving=False, air=False, scale=1.0, order=(0, 1, 2, 3)):
+    """All four kids in a line, leader at the front."""
+    gap = 13 * scale
+    n = len(order)
+    for slot in reversed(range(n)):
+        x = cx + facing * ((n - 1) / 2 - slot) * gap
+        draw_ninja_kid(surf, order[slot], x, bottom, facing, t + slot * 0.4, moving, air, scale=scale)
+
+
 def draw_hero(surf, key, cx, bottom, facing, t, moving=False, air=False, aim=None,
               punch=0.0, glide=False, monster=False, h=None):
-    if monster:
+    if key == "ninjas":
+        draw_ninja_group(surf, cx, bottom, facing, t, moving, air, scale=(h or 56) / 56 * 0.92)
+    elif monster:
         draw_mj_monster(surf, cx, bottom, h or 84, facing, t, moving, punch)
     else:
         draw_humanoid(surf, cx, bottom, h or (60 if key == "venom" else 56), facing, t,
@@ -369,7 +421,8 @@ def draw_enemy(surf, e, cam):
             st = dict(st, torso=WHITE, side=WHITE, arms=WHITE)
         aim = None
         if e.kind == "shooter":
-            st = dict(st, gun=True)
+            if style != "ninja":
+                st = dict(st, gun=True)
             aim = 0.0 if e.facing > 0 else math.pi
         draw_humanoid(surf, x, b, e.body.h, e.facing, e.t, st, moving=abs(e.body.vx) > 10,
                       air=not e.body.on_ground, aim=aim)
@@ -540,6 +593,73 @@ def draw_boss(surf, boss, cam):
         pygame.draw.arc(surf, BLACK, (hx - 8, hy + 1, 16, 10), math.pi, 2 * math.pi, 2)
         pygame.draw.polygon(surf, g, [(hx - f * 10, hy - 2), (hx - f * 22, hy - 10), (hx - f * 10, hy + 4)])
         pygame.draw.polygon(surf, (110, 40, 140), [(hx - 10, hy - 9), (hx + f * 4, hy - 34), (hx + 10, hy - 9)])
+    elif k == "shadow_ninja":
+        if boss.intangible:
+            # just a swirl of smoke while he's vanished
+            for i in range(7):
+                a = t * 3 + i * 0.9
+                rr = 18 + 10 * math.sin(t * 5 + i)
+                pygame.draw.circle(surf, (70, 70, 80), (int(x + math.cos(a) * 26), int(b - h * 0.5 + math.sin(a) * 30)), int(rr))
+            return
+        st = dict(ENEMY_STYLES["ninja"], side=(120, 10, 20), bulk=1.2)
+        if flash:
+            st.update(torso=WHITE, head=WHITE, arms=WHITE, legs=WHITE)
+        # katana on his back
+        pygame.draw.line(surf, (60, 40, 30), (x - f * 22, b - h * 0.85), (x + f * 14, b - h * 0.4), 5)
+        pygame.draw.line(surf, (210, 215, 225), (x - f * 22, b - h * 0.85), (x - f * 36, b - h * 1.02), 4)
+        # long red scarf streaming behind
+        pts = [(x - f * 6, b - h * 0.78)]
+        for i in range(1, 6):
+            pts.append((x - f * (6 + i * 13), b - h * 0.78 + math.sin(t * 8 + i) * 6 + i * 3))
+        pygame.draw.lines(surf, (200, 25, 35), False, pts, 6)
+        aim = boss.aim_angle if boss.state == "throw" else None
+        draw_humanoid(surf, x, b, h, f, t, st, moving=abs(boss.body.vx) > 10, air=not boss.body.on_ground,
+                      aim=aim, punch=0.6 if boss.state in ("dash", "slash") else 0)
+        # glowing red eyes over the balaclava slit
+        u = h / 56
+        ex, ey = x + f * 2 * u + f * 3 * u, b - h + 8 * u
+        for dx in (-3, 3):
+            pygame.draw.circle(surf, (255, 40, 40), (int(ex + dx * u), int(ey)), max(2, int(1.6 * u)))
+        if boss.state == "dash":
+            for i in range(4):
+                yy = b - h * (0.2 + i * 0.2)
+                pygame.draw.line(surf, (200, 200, 220), (x - f * 40, yy), (x - f * 120, yy), 2)
+
+
+# --------------------------------------------------------------------------- house props
+
+def draw_bed(surf, rect, colour):
+    """A single bed: headboard on the left, pillow, mattress (blanket drawn separately)."""
+    r = pygame.Rect(rect)
+    wood = (125, 80, 45)
+    pygame.draw.rect(surf, wood, (r.left, r.bottom - 52, 12, 52), border_radius=4)  # headboard
+    pygame.draw.rect(surf, wood, (r.right - 10, r.bottom - 30, 10, 30), border_radius=3)  # footboard
+    pygame.draw.rect(surf, _darker(wood, 0.8), (r.left + 4, r.bottom - 16, r.width - 8, 10))
+    for lx in (r.left + 6, r.right - 12):
+        pygame.draw.rect(surf, _darker(wood, 0.7), (lx, r.bottom - 8, 6, 8))
+    pygame.draw.rect(surf, (240, 240, 235), (r.left + 10, r.bottom - 28, r.width - 20, 14), border_radius=5)
+    pygame.draw.ellipse(surf, WHITE, (r.left + 12, r.bottom - 38, 34, 16))
+    pygame.draw.ellipse(surf, (200, 200, 210), (r.left + 12, r.bottom - 38, 34, 16), 2)
+
+
+def draw_blanket(surf, rect, colour, sleeper=False):
+    r = pygame.Rect(rect)
+    top = r.bottom - (36 if sleeper else 30)
+    b = pygame.Rect(r.left + 44, top, r.width - 52, r.bottom - 12 - top)
+    pygame.draw.rect(surf, colour, b, border_radius=6)
+    pygame.draw.rect(surf, _lighter(colour), (b.left, b.top, 8, b.height), border_radius=4)
+    for k in range(b.left + 16, b.right - 6, 16):
+        pygame.draw.line(surf, _darker(colour, 0.8), (k, b.top + 4), (k, b.bottom - 3), 2)
+
+
+def draw_trampoline(surf, rect, t, squash=0.0):
+    r = pygame.Rect(rect)
+    mid = r.bottom - 18 + int(squash * 8)
+    for lx in (r.left + 8, r.right - 8):
+        pygame.draw.line(surf, (60, 60, 70), (lx, r.bottom - 18), (lx, r.bottom), 4)
+    pygame.draw.line(surf, (40, 40, 50), (r.left + 4, r.bottom - 18), (r.right - 4, r.bottom - 18), 6)
+    pygame.draw.arc(surf, (30, 30, 35), (r.left + 6, mid - 10, r.width - 12, 14), math.pi, 2 * math.pi, 4)
+    pygame.draw.rect(surf, (40, 120, 230), (r.left, r.bottom - 22, r.width, 6), border_radius=3)
 
 
 def _star(surf, c, r, colour):
@@ -758,6 +878,32 @@ def make_background(city):
         pygame.draw.line(mid, blue, (tb - 165, 540), (tb - 360, 600), 10)
         pygame.draw.line(mid, blue, (tb + 165, 540), (tb + 360, 600), 10)
         layers = [(far, 0.12), (mid, 0.3)]
+    elif cid == "ninjahouse":
+        pygame.draw.circle(sky, (255, 235, 170), (980, 170), 55)
+        for _ in range(5):
+            cx, cy = rng.randint(0, WIDTH), rng.randint(40, 260)
+            for k in range(4):
+                pygame.draw.circle(sky, (255, 220, 200), (cx + k * 28, cy + (k % 2) * 8), 24)
+        far = _layer()
+        x = 0
+        while x < far.get_width():  # neighbours' houses
+            bw, bh = rng.randint(150, 220), rng.randint(110, 160)
+            col = rng.choice([(215, 205, 190), (190, 200, 210), (220, 195, 175)])
+            _wrap_rect(far, col, (x, 600 - bh, bw, bh + 120))
+            pygame.draw.polygon(far, (120, 80, 70), [(x - 10, 600 - bh), (x + bw // 2, 600 - bh - 60), (x + bw + 10, 600 - bh)])
+            for wx in range(x + 20, x + bw - 30, 50):
+                _wrap_rect(far, (255, 230, 150), (wx, 600 - bh + 30, 24, 22))
+            x += bw + rng.randint(40, 120)
+        mid = _layer()
+        for _ in range(14):  # garden trees and a fence
+            tx = rng.randint(0, mid.get_width())
+            pygame.draw.rect(mid, (90, 60, 35), (tx - 6, 520, 12, 120))
+            for k in range(4):
+                pygame.draw.circle(mid, (50 + k * 8, 130 + k * 6, 60), (tx + rng.randint(-30, 30), 500 + rng.randint(-40, 20)), rng.randint(28, 44))
+        for fx in range(0, mid.get_width(), 22):
+            pygame.draw.rect(mid, (235, 225, 205), (fx, 560, 16, 80))
+        pygame.draw.rect(mid, (235, 225, 205), (0, 580, mid.get_width(), 8))
+        layers = [(far, 0.12), (mid, 0.3)]
     return sky, layers
 
 
@@ -784,11 +930,16 @@ def render_tiles(tm, city):
     plank_c = city["plank"]
     cid = city["id"]
     rng = random.Random(7)
+    rooms = getattr(tm, "rooms", None)
+    if rooms:
+        _paint_house(surf, tm, rooms, rng)
     for r in range(tm.rows):
         for c in range(tm.cols):
             t = tm.grid[r][c]
             x, y = c * TILE, r * TILE
-            if t == "#":
+            if t == "#" and rooms:
+                _house_tile(surf, tm, c, r, x, y, city, _room_at(rooms, c))
+            elif t == "#":
                 pygame.draw.rect(surf, body_c, (x, y, TILE, TILE))
                 if cid in ("stalbans", "london"):
                     off = (r % 2) * TILE // 2
@@ -827,3 +978,143 @@ def render_tiles(tm, city):
                 if cid == "supercity":
                     pygame.draw.line(surf, _darker(plank_c, 0.6), (x, y + 12), (x + TILE // 2, y), 2)
     return surf
+
+
+# --------------------------------------------------------------------------- the Ninja Kids' house
+
+ROOM_WALLS = {"living": (235, 215, 170), "kitchen": (215, 235, 225), "stairs": (225, 205, 185),
+              "bedroom": (190, 210, 245), "girls": (240, 200, 230), "gym": (60, 70, 95)}
+
+
+def _room_at(rooms, c):
+    for room in rooms:
+        if room["c0"] <= c < room["c1"]:
+            return room
+    return None
+
+
+def _window(surf, x, y, w, h):
+    """Cut a hole in the wall so the sky behind shows through."""
+    pygame.draw.rect(surf, (250, 250, 250), (x - 6, y - 6, w + 12, h + 12))
+    surf.fill((0, 0, 0, 0), (x, y, w, h))
+    pygame.draw.line(surf, (250, 250, 250), (x + w // 2, y), (x + w // 2, y + h), 5)
+    pygame.draw.line(surf, (250, 250, 250), (x, y + h // 2), (x + w, y + h // 2), 5)
+    pygame.draw.rect(surf, (200, 200, 200), (x - 10, y + h + 4, w + 20, 8))
+
+
+def _frame(surf, x, y, w, h, inner):
+    pygame.draw.rect(surf, (90, 60, 35), (x, y, w, h))
+    pygame.draw.rect(surf, inner, (x + 5, y + 5, w - 10, h - 10))
+
+
+def _paint_house(surf, tm, rooms, rng):
+    for room in rooms:
+        kind = room["kind"]
+        x0, x1 = room["c0"] * TILE, room["c1"] * TILE
+        if kind == "yard":
+            continue
+        wall = ROOM_WALLS[kind]
+        pygame.draw.rect(surf, wall, (x0, 0, x1 - x0, tm.height))
+        # skirting board and picture rail
+        pygame.draw.rect(surf, _darker(wall, 0.85), (x0, 2 * TILE, x1 - x0, 8))
+        if kind == "kitchen":
+            for ty in range(2 * TILE + 8, tm.height, 20):
+                pygame.draw.line(surf, _darker(wall, 0.92), (x0, ty), (x1, ty), 1)
+            for tx in range(x0, x1, 20):
+                pygame.draw.line(surf, _darker(wall, 0.92), (tx, 2 * TILE + 8), (tx, tm.height), 1)
+        elif kind in ("bedroom", "girls"):
+            for tx in range(x0 + 10, x1, 36):
+                pygame.draw.line(surf, _lighter(wall, 12), (tx, 2 * TILE + 8), (tx, tm.height), 6)
+        elif kind == "gym":
+            for ty in range(int(6.5 * TILE), tm.height, 40):
+                pygame.draw.rect(surf, (40, 110, 200) if (ty // 40) % 2 else (230, 60, 60), (x0, ty, x1 - x0, 36))
+        # a partition between rooms
+        pygame.draw.rect(surf, _darker(wall, 0.7), (x0, 2 * TILE, 6, tm.height))
+        floor_y = room.get("floor", 15) * TILE
+        w = x1 - x0
+        if kind == "living":
+            for k in range(2):
+                _window(surf, x0 + 140 + k * 560, 4 * TILE, 120, 130)
+            # TV on the wall
+            tvx = x0 + w // 2 - 40
+            pygame.draw.rect(surf, (20, 20, 25), (tvx, 5 * TILE, 220, 120), border_radius=6)
+            pygame.draw.rect(surf, (60, 120, 200), (tvx + 10, 5 * TILE + 10, 200, 100))
+            from .core import draw_text
+            draw_text(surf, "NINJA KIDS", 34, WHITE, (tvx + 110, 5 * TILE + 60), "center", outline=BLACK)
+            _frame(surf, x0 + 420, 4 * TILE, 90, 70, (230, 160, 90))
+            _frame(surf, x0 + 1300, 5 * TILE, 70, 90, (120, 190, 120))
+            # lamp
+            lx = x0 + 60
+            pygame.draw.rect(surf, (90, 70, 50), (lx - 3, floor_y - 160, 6, 160))
+            pygame.draw.polygon(surf, (250, 230, 160), [(lx - 26, floor_y - 160), (lx + 26, floor_y - 160), (lx + 16, floor_y - 200), (lx - 16, floor_y - 200)])
+        elif kind == "kitchen":
+            for cx in range(x0 + 120, x1 - 200, 420):
+                pygame.draw.rect(surf, (250, 250, 250), (cx, 4 * TILE, 220, 100), border_radius=4)
+                pygame.draw.rect(surf, (200, 200, 205), (cx, 4 * TILE, 220, 100), 3, border_radius=4)
+                pygame.draw.line(surf, (200, 200, 205), (cx + 110, 4 * TILE), (cx + 110, 4 * TILE + 100), 3)
+            _window(surf, x0 + w // 2 - 60, 4 * TILE, 120, 110)
+            pygame.draw.circle(surf, WHITE, (x1 - 180, 4 * TILE + 30), 28)  # clock
+            pygame.draw.circle(surf, BLACK, (x1 - 180, 4 * TILE + 30), 28, 3)
+            pygame.draw.line(surf, BLACK, (x1 - 180, 4 * TILE + 30), (x1 - 180, 4 * TILE + 12), 3)
+            pygame.draw.line(surf, BLACK, (x1 - 180, 4 * TILE + 30), (x1 - 166, 4 * TILE + 36), 3)
+        elif kind == "stairs":
+            for i in range(5):
+                _frame(surf, x0 + 80 + i * 150, 4 * TILE + (i % 2) * 30, 70, 56,
+                       rng.choice([(240, 120, 90), (110, 170, 230), (170, 220, 120), (240, 200, 90)]))
+        elif kind in ("bedroom", "girls"):
+            _window(surf, x0 + 120, 4 * TILE, 110, 110)
+            # ninja-star posters
+            for px in range(x0 + 380, x1 - 120, 360):
+                pygame.draw.rect(surf, (25, 25, 35), (px, 3 * TILE + 20, 100, 130))
+                _star(surf, (px + 50, 3 * TILE + 75), 34, (240, 200, 60) if kind == "bedroom" else (240, 120, 200))
+                from .core import draw_text
+                draw_text(surf, "NINJA", 26, WHITE, (px + 50, 3 * TILE + 130), "center")
+        elif kind == "gym":
+            from .core import draw_text
+            pygame.draw.rect(surf, (230, 60, 60), (x0 + 200, 3 * TILE, 520, 60), border_radius=8)
+            draw_text(surf, "NINJA TRAINING GYM", 48, WHITE, (x0 + 460, 3 * TILE + 30), "center", outline=BLACK)
+            for bx in range(x0 + 900, x1 - 100, 500):  # punching bags
+                pygame.draw.line(surf, (60, 60, 60), (bx, 2 * TILE), (bx, 6 * TILE), 3)
+                pygame.draw.rect(surf, (170, 40, 40), (bx - 24, 6 * TILE, 48, 110), border_radius=16)
+
+
+def _house_tile(surf, tm, c, r, x, y, city, room):
+    kind = room["kind"] if room else "yard"
+    if r < 2:  # ceiling
+        pygame.draw.rect(surf, (245, 242, 235), (x, y, TILE, TILE))
+        if r == 1:
+            pygame.draw.rect(surf, (215, 205, 190), (x, y + TILE - 8, TILE, 8))
+        return
+    above = tm.tile(c, r - 1)
+    floor = room.get("floor", 15) if room else 99
+    if kind == "kitchen" and r < floor:  # kitchen units: white cupboards with a dark worktop
+        pygame.draw.rect(surf, (250, 250, 250), (x, y, TILE, TILE))
+        pygame.draw.rect(surf, (205, 205, 210), (x, y, TILE, TILE), 2)
+        pygame.draw.rect(surf, (150, 150, 160), (x + TILE // 2 - 6, y + 10, 12, 3))
+        if above != "#":
+            pygame.draw.rect(surf, (80, 80, 90), (x, y, TILE, 8))
+        return
+    if r < floor and kind != "stairs":  # furniture: wood
+        pygame.draw.rect(surf, (150, 100, 60), (x, y, TILE, TILE))
+        pygame.draw.rect(surf, (110, 70, 40), (x, y, TILE, TILE), 2)
+        if above != "#":
+            pygame.draw.rect(surf, (175, 125, 80), (x, y, TILE, 6))
+        return
+    if kind == "yard":
+        pygame.draw.rect(surf, (120, 85, 55), (x, y, TILE, TILE))
+        if above != "#":
+            pygame.draw.rect(surf, (80, 170, 60), (x, y, TILE, 10))
+            for k in range(0, TILE, 6):
+                pygame.draw.line(surf, (60, 140, 45), (x + k, y), (x + k + 2, y - 5), 2)
+        return
+    # wooden floorboards (gym gets blue crash mats)
+    if kind == "gym":
+        base, top = (40, 90, 170), (60, 130, 220)
+    else:
+        base, top = (150, 100, 60), (190, 135, 85)
+    pygame.draw.rect(surf, base, (x, y, TILE, TILE))
+    pygame.draw.line(surf, _darker(base, 0.8), (x, y + TILE // 2), (x + TILE, y + TILE // 2), 2)
+    off = (r % 2) * TILE // 2
+    pygame.draw.line(surf, _darker(base, 0.8), (x + off, y), (x + off, y + TILE // 2), 2)
+    if above != "#":
+        pygame.draw.rect(surf, top, (x, y, TILE, 8))

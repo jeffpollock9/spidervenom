@@ -1,13 +1,13 @@
 import pygame
 
 from .. import art
-from ..core import Scene, draw_text
+from ..core import Scene, draw_text, draw_text_fit, NUMBER_WORDS
 from ..heroes import HERO_INFO
 from ..levels import CITIES, CITY_IDS
 from ..settings import WIDTH, HEIGHT, WHITE, BLACK
 from .common import draw_menu_bg, city_thumb
 
-CARD_W, CARD_H = 228, 420
+CARD_W, CARD_H = 196, 420
 
 
 class CitySelectScene(Scene):
@@ -16,9 +16,10 @@ class CitySelectScene(Scene):
         self.t = 0.0
         self.index = index
         self.cards = []
-        for i in range(5):
-            x = WIDTH // 2 + (i - 2) * (CARD_W + 18) - CARD_W // 2
-            self.cards.append(pygame.Rect(x, 150, CARD_W, CARD_H))
+        n = len(CITIES)
+        for i in range(n):
+            x = WIDTH // 2 + (i - (n - 1) / 2) * (CARD_W + 12) - CARD_W // 2
+            self.cards.append(pygame.Rect(int(x), 150, CARD_W, CARD_H))
         game.audio.music("menu")
         pygame.mouse.set_visible(True)
 
@@ -30,9 +31,9 @@ class CitySelectScene(Scene):
     def handle_event(self, e):
         if e.type == pygame.KEYDOWN:
             if e.key in (pygame.K_LEFT, pygame.K_a):
-                self.index = (self.index - 1) % 5
+                self.index = (self.index - 1) % len(CITIES)
             elif e.key in (pygame.K_RIGHT, pygame.K_d):
-                self.index = (self.index + 1) % 5
+                self.index = (self.index + 1) % len(CITIES)
             elif e.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_KP_ENTER):
                 self.choose()
             elif e.key == pygame.K_ESCAPE:
@@ -63,20 +64,21 @@ class CitySelectScene(Scene):
             pygame.draw.rect(surf, (15, 15, 25), rr, border_radius=16)
             pygame.draw.rect(surf, (255, 230, 80) if sel else city["ground_top"], rr, 5 if sel else 3, border_radius=16)
             surf.blit(city_thumb(i, (r.w - 20, 150)), (r.left + 10, r.top + 10))
-            draw_text(surf, f"{i + 1}. {city['name'].upper()}", 34, WHITE, (r.centerx, r.top + 185), "center")
-            draw_text(surf, city["blurb"], 19, (200, 200, 200), (r.centerx, r.top + 215), "center")
+            draw_text_fit(surf, f"{i + 1}. {city['name'].upper()}", 34, WHITE, (r.centerx, r.top + 185), "center", r.w - 12)
+            draw_text_fit(surf, city["blurb"], 19, (200, 200, 200), (r.centerx, r.top + 215), "center", r.w - 12)
             draw_text(surf, "BOSS", 22, (255, 120, 120), (r.centerx, r.top + 250), "center")
-            draw_text(surf, city["boss_name"].upper(), 30, (255, 230, 120), (r.centerx, r.top + 278), "center")
+            draw_text_fit(surf, city["boss_name"].upper(), 30, (255, 230, 120), (r.centerx, r.top + 278), "center", r.w - 12)
             cleared = save.cleared.get(city["id"], [])
             if cleared:
                 draw_text(surf, "SAVED!", 34, (120, 255, 120), (r.centerx, r.top + 330), "center", outline=BLACK)
+                gap = min(34, (r.w - 40) / max(1, len(cleared) - 1))
                 for j, hk in enumerate(cleared):
-                    x = r.centerx + (j - (len(cleared) - 1) / 2) * 34
+                    x = r.centerx + (j - (len(cleared) - 1) / 2) * gap
                     surf.blit(art.hero_preview(hk, 40), (x - 20, r.top + 352))
             else:
                 draw_text(surf, "in danger", 24, (200, 120, 120), (r.centerx, r.top + 330), "center")
         if save.all_cleared(CITY_IDS):
-            draw_text(surf, "ALL FIVE CITIES SAVED - YOU ARE A LEGEND!", 40, (255, 215, 0),
+            draw_text(surf, f"ALL {NUMBER_WORDS[len(CITIES)]} CITIES SAVED - YOU ARE A LEGEND!", 40, (255, 215, 0),
                       (WIDTH // 2, HEIGHT - 70), "center", outline=BLACK)
         draw_text(surf, "Click a city  (or arrows + ENTER)      ESC: change hero", 26, (200, 200, 200),
                   (WIDTH // 2, HEIGHT - 20), "midbottom")

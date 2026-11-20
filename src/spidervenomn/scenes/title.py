@@ -9,13 +9,13 @@ from .common import draw_menu_bg, draw_logo
 CONTROLS = [
     ("A / D  or  ARROWS", "Run left / right"),
     ("W / SPACE / UP", "Jump (hold for higher)"),
-    ("S / DOWN", "Drop through planks"),
+    ("S / DOWN", "Drop through planks / rest in a bed"),
     ("MOUSE", "Aim"),
     ("LEFT CLICK  (J)", "Attack / shoot"),
     ("RIGHT CLICK  (K)", "Special power"),
     ("SHIFT  (E)", "Extra power (swing, dash, jump...)"),
     ("R", "Reload (Harry)"),
-    ("F  (X / MIDDLE CLICK)", "Ultimate (Venom's symbiote blast)"),
+    ("F  (X / MIDDLE CLICK)", "Ultimate (Venom, Ninja Kids)"),
     ("ESC", "Pause"),
     ("F11 / M", "Fullscreen / music on-off"),
 ]
@@ -73,7 +73,7 @@ class TitleScene(Scene):
         idx = int(self.t / 6) % 5
         draw_menu_bg(surf, idx, self.t * 40)
         draw_logo(surf, (WIDTH // 2, 150), 130, self.t)
-        draw_text(surf, "Save the five cities!", 36, (255, 230, 120), (WIDTH // 2, 235), "center")
+        draw_text(surf, "Save the six cities!", 36, (255, 230, 120), (WIDTH // 2, 235), "center")
         for b in self.buttons:
             b.draw(surf)
         # hero line-up
