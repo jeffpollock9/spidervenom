@@ -22,6 +22,11 @@ def main():
         os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
         os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
     os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+    # Name our audio stream, so PulseAudio/PipeWire keep a volume for SpiderVenomn itself instead of
+    # reusing whatever was saved for "python3.14" (which can be half-muted by some other script).
+    os.environ.setdefault("SDL_APP_NAME", "SpiderVenomn")
+    os.environ.setdefault("SDL_AUDIO_DEVICE_APP_NAME", "SpiderVenomn")
+    os.environ.setdefault("SDL_AUDIO_DEVICE_STREAM_NAME", "Game audio")
 
     import pygame
     from spidervenomn.settings import WIDTH, HEIGHT, TITLE
