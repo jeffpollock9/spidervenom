@@ -71,6 +71,7 @@ The project is managed with [uv](https://docs.astral.sh/uv/): dependencies live 
 uv sync                                            # create/update .venv
 uv run spidervenomn                                # play
 uv run spidervenomn --selftest --screenshots shots # smoke test
+uv run spidervenomn --audio-test                   # no sound? prints what the mixer sees and plays music
 uv add <package>                                   # add a dependency
 ```
 

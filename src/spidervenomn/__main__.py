@@ -15,6 +15,7 @@ def main():
     ap.add_argument("--screenshots", metavar="DIR", help="save screenshots during selftest")
     ap.add_argument("--fullscreen", action="store_true")
     ap.add_argument("--mute", action="store_true")
+    ap.add_argument("--audio-test", action="store_true", help="print sound diagnostics and play a few seconds of music")
     ap.add_argument("--make-icon", metavar="PNG", help=argparse.SUPPRESS)
     args = ap.parse_args()
 
@@ -45,6 +46,11 @@ def main():
         return
     pygame.display.set_icon(icon)
 
+    if args.audio_test:
+        audio_test()
+        pygame.quit()
+        return
+
     if args.selftest:
         from spidervenomn.selftest import run
         ok = run(args.screenshots)
@@ -58,6 +64,47 @@ def main():
     game.change(TitleScene(game))
     game.run()
     pygame.quit()
+
+
+def audio_test():
+    """Report what the sound system sees, then play a sound effect and the menu music."""
+    import platform
+    import time
+    import pygame
+    from spidervenomn.audio import Audio
+    print(f"python {platform.python_version()} ({sys.executable})")
+    print(f"pygame-ce {pygame.version.ver}, SDL {'.'.join(map(str, pygame.get_sdl_version()))}")
+    for k in ("SDL_AUDIODRIVER", "PULSE_SERVER", "PIPEWIRE_RUNTIME_DIR", "XDG_RUNTIME_DIR", "SDL_APP_NAME"):
+        print(f"  {k}={os.environ.get(k)}")
+    print(f"mixer before Audio(): {pygame.mixer.get_init()}")
+    try:
+        import pygame._sdl2.audio as sdl_audio
+        print(f"output devices: {sdl_audio.get_audio_device_names(False)}")
+    except Exception as e:  # noqa: BLE001 - diagnostics only
+        print(f"output devices: unknown ({e!r})")
+    t = time.time()
+    audio = Audio()
+    print(f"Audio ok={audio.ok}, mixer={pygame.mixer.get_init()}, driver={pygame.mixer.get_driver() if audio.ok else None}, "
+          f"setup {time.time() - t:.2f}s")
+    if not audio.ok:
+        try:
+            pygame.mixer.quit()
+            pygame.mixer.init()
+        except pygame.error as e:
+            print(f"mixer.init() error: {e}")
+        return
+    print("playing a jump sound...")
+    audio.play("jump")
+    time.sleep(0.6)
+    t = time.time()
+    audio.music("menu")
+    ch = audio.music_channel
+    print(f"menu music built in {time.time() - t:.2f}s, channel={ch}, playing={ch.get_busy() if ch else None}, "
+          f"volume={ch.get_volume() if ch else None}")
+    for i in range(4):
+        time.sleep(1)
+        print(f"  {i + 1}s: playing={ch.get_busy() if ch else None}")
+    print("Did you hear a jump sound and then music? Paste all of this back to Claude.")
 
 
 if __name__ == "__main__":
