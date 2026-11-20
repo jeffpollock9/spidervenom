@@ -368,13 +368,17 @@ def _quill(surf, colour, base_a, base_b, tip, glint=False):
         pygame.draw.line(surf, (200, 230, 255), base_a, tip, 2)
 
 
+SONIC_GOLD = (255, 205, 40)
+
+
 def draw_sonic(surf, cx, bottom, facing, t, moving=False, air=False, punch=0.0, ball=False,
-               fast=False, h=None, **_):
-    """A cartoon blue hedgehog. fast: quills stand out long and sharp; ball: curled up spinning."""
+               fast=False, h=None, gold=False, **_):
+    """A cartoon blue hedgehog. fast: quills stand out long and sharp; ball: curled up spinning;
+    gold: Golden Sonic, with quills swept up and red eyes."""
     u = (h or 50) / 50.0
     f = facing
-    blue = SONIC_BLUE
-    dark = _darker(blue, 0.7)
+    blue = SONIC_GOLD if gold else SONIC_BLUE
+    dark = _darker(blue, 0.8 if gold else 0.7)
     if ball:
         c = (cx, bottom - 20 * u)
         r = 19 * u
@@ -400,7 +404,7 @@ def draw_sonic(surf, cx, bottom, facing, t, moving=False, air=False, punch=0.0, 
     for k, (dy, extra) in enumerate(((-9, 0), (-1, 4), (7, 0), (15, -6))):
         base_a = (head[0] - f * hr * 0.2, head[1] + (dy - 5) * u)
         base_b = (head[0] - f * hr * 0.2, head[1] + (dy + 5) * u)
-        lift = -6 * u if fast else 3 * u * k
+        lift = -(10 + 4 * k) * u if gold else -6 * u if fast else 3 * u * k
         tip = (head[0] - f * (hr + ql + extra * u), head[1] + dy * u + lift + (k - 1.5) * (2 if fast else 4) * u)
         _quill(surf, dark if k % 2 else blue, base_a, base_b, tip, glint=fast)
     # legs and shoes
@@ -445,7 +449,8 @@ def draw_sonic(surf, cx, bottom, facing, t, moving=False, air=False, punch=0.0, 
     eye = pygame.Rect(0, 0, int(13 * u), int(10 * u))
     eye.center = (int(head[0] + f * 5 * u), int(head[1] - 3 * u))
     pygame.draw.ellipse(surf, WHITE, eye)
-    pygame.draw.circle(surf, (40, 170, 70), (int(eye.centerx + f * 3 * u), int(eye.centery)), max(2, int(2.5 * u)))
+    pygame.draw.circle(surf, (220, 30, 40) if gold else (40, 170, 70), (int(eye.centerx + f * 3 * u), int(eye.centery)),
+                       max(2, int(2.5 * u)))
     pygame.draw.circle(surf, BLACK, (int(eye.centerx + f * 3.5 * u), int(eye.centery)), max(1, int(1.2 * u)))
     pygame.draw.arc(surf, BLACK, (head[0] + f * 4 * u - 4 * u, head[1] + 5 * u, 8 * u, 4 * u), math.pi, 2 * math.pi, 1)
     # front arm (kicks and punches reach forward)
@@ -461,13 +466,27 @@ def draw_sonic(surf, cx, bottom, facing, t, moving=False, air=False, punch=0.0, 
     if fast and moving:
         for k in range(4):
             y = bottom - (8 + k * 11) * u
-            pygame.draw.line(surf, (190, 220, 255), (cx - f * (26 + k * 4) * u, y), (cx - f * (46 + k * 6) * u, y), 2)
+            pygame.draw.line(surf, (255, 240, 170) if gold else (190, 220, 255), (cx - f * (26 + k * 4) * u, y), (cx - f * (46 + k * 6) * u, y), 2)
+
+
+def draw_golden_aura(surf, cx, cy, t, scale=1.0):
+    """Shimmering glow and sparkles around Golden Sonic."""
+    r = int(42 * scale)
+    glow = pygame.Surface((r * 2 + 4, r * 2 + 4), pygame.SRCALPHA)
+    pulse = 0.85 + 0.15 * math.sin(t * 10)
+    for k, a in enumerate((40, 60, 90)):
+        pygame.draw.circle(glow, (255, 225, 90, a), (r + 2, r + 2), int(r * pulse * (1 - k * 0.25)))
+    surf.blit(glow, (cx - r - 2, cy - r - 2))
+    for i in range(6):
+        a = t * 3 + i * math.tau / 6
+        d = r * (0.7 + 0.35 * math.sin(t * 7 + i * 2))
+        _star(surf, (cx + math.cos(a) * d, cy + math.sin(a) * d), 4 + 2 * math.sin(t * 12 + i), (255, 250, 210))
 
 
 def draw_hero(surf, key, cx, bottom, facing, t, moving=False, air=False, aim=None,
-              punch=0.0, glide=False, monster=False, h=None, ball=False, fast=False):
+              punch=0.0, glide=False, monster=False, h=None, ball=False, fast=False, gold=False):
     if key == "sonic":
-        draw_sonic(surf, cx, bottom, facing, t, moving, air, punch, ball, fast, h=h and h * 0.9)
+        draw_sonic(surf, cx, bottom, facing, t, moving, air, punch, ball, fast, h=h and h * 0.9, gold=gold)
     elif key == "ninjas":
         draw_ninja_group(surf, cx, bottom, facing, t, moving, air, scale=(h or 56) / 56 * 0.92)
     elif monster:

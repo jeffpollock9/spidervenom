@@ -51,6 +51,8 @@ The **Ninja Kids** are Ashton, Payton, Brighton and Paxton, and you control all 
 
 **Sonic** speeds up the longer you keep running, up to more than twice normal speed. Once he's going fast, his quills stand out long and sharp: any baddie or boss he runs into gets spiked, and touching them doesn't hurt him. A spin dash or a homing attack spikes too, and a homing attack bounces him up off whatever it hits.
 
+When his energy bar is full, press **F** and Sonic rises into the air in a shower of gold and becomes **Golden Sonic** for 10 seconds. He's at top speed straight away, jumps higher, and nothing can hurt him. Any baddie he runs into is defeated in one hit, and a boss loses a big chunk each time. The energy bar counts down the golden time. Homing attacks are free while he's golden.
+
 Powers use the blue energy bar, which refills over time. Blue lightning pickups refill it completely, and red-cross pickups restore health.
 
 ## Cities and bosses

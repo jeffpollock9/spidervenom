@@ -27,7 +27,7 @@ HERO_INFO = {
                            "SHIFT: Swap leader", "F (full energy): NINJA STORM"]),
     "sonic": dict(name="Sonic", colour=(40, 110, 240),
                   powers=["LMB: Kick", "RMB: Homing attack", "SHIFT (hold, let go): Spin dash",
-                          "RUN FAST: Spiky quills hurt baddies"]),
+                          "RUN FAST: Spiky quills hurt baddies", "F (full energy): GOLDEN SONIC"]),
 }
 HERO_KEYS = list(HERO_INFO)
 
@@ -942,9 +942,15 @@ class Sonic(Hero):
     melee_damage = 12
     melee_range = 50
     spike_damage = 25
+    golden_time = 10.0
+    rise_time = 0.9
+    golden_top_speed = 1000.0
+    golden_boss_damage = 30
 
     def __init__(self, world, x, y):
         super().__init__(world, x, y)
+        self.golden_t = 0.0   # seconds of Golden Sonic left
+        self.rise_t = 0.0     # rising into the air while transforming
         self.run_t = 0.0
         self.charging = False
         self.charge = 0.0
@@ -953,14 +959,64 @@ class Sonic(Hero):
         self.spike_cd = {}
         self.trail = []
 
+    @property
+    def golden(self):
+        return self.golden_t > 0
+
     def fast(self):
-        return abs(self.body.vx) > self.fast_speed or self.spin_t > 0 or self.homing_t > 0
+        return (self.golden or abs(self.body.vx) > self.fast_speed or self.spin_t > 0
+                or self.homing_t > 0)
 
     def spiky(self):
         return self.fast() and self.resting is None
 
     def speed_mult(self):
+        if self.golden:
+            return self.golden_top_speed / self.speed
         return (self.speed + (self.top_speed - self.speed) * self.run_t / self.ramp) / self.speed
+
+    # -------------------------------------------------------------- Golden Sonic
+    def ultimate(self):
+        if self.golden or self.rise_t > 0 or self.resting is not None:
+            return
+        if self.energy < 100:
+            self.say("Need full energy!")
+            return
+        self.stop_moves()
+        self.energy = 0
+        self.rise_t = self.rise_time
+        self.body.vx *= 0.3
+        self.world.audio.play("transform")
+        self.world.banner("GOLDEN SONIC!", 1.4)
+
+    def end_golden(self):
+        if self.golden or self.rise_t > 0:
+            self.golden_t = self.rise_t = 0.0
+            self.energy = 0.0
+            self.world.burst(self.body.cx, self.body.cy, (255, 220, 80), 16, 260)
+
+    def take_damage(self, amount, from_x=None, knock=300):
+        if self.golden or self.rise_t > 0:
+            return False  # nothing can touch Golden Sonic
+        return super().take_damage(amount, from_x, knock)
+
+    def rise(self, dt):
+        """Float up into the air in a shower of gold, then power up."""
+        b = self.body
+        self.rise_t = max(0.0, self.rise_t - dt)
+        b.vx *= 0.9
+        b.vy = -420 * (self.rise_t / self.rise_time)
+        b.step(self.world.tm, dt, self.world.platforms)
+        self.world.burst(b.cx, b.bottom, (255, 215, 60), 2, 200)
+        if self.rise_t <= 0:
+            self.golden_t = self.golden_time
+            self.run_t = self.ramp
+            w = self.world
+            w.burst(b.cx, b.cy, (255, 230, 90), 50, 600)
+            w.burst(b.cx, b.cy, WHITE, 20, 400)
+            w.shake(14)
+            w.audio.play("roar")
+        self.coyote = 0.0
 
     def stop_moves(self):
         self.charging = False
@@ -968,6 +1024,7 @@ class Sonic(Hero):
 
     def on_rest(self):
         self.stop_moves()
+        self.end_golden()
 
     def on_fall(self):
         self.stop_moves()
@@ -975,6 +1032,9 @@ class Sonic(Hero):
     def move(self, ctl, dt):
         b = self.body
         tm, plats = self.world.tm, self.world.platforms
+        if self.rise_t > 0:
+            self.rise(dt)
+            return
         if self.charging:  # revving a spin dash on the spot
             b.vx *= 0.75
             b.apply_gravity(dt)
@@ -989,11 +1049,14 @@ class Sonic(Hero):
             self.coyote = 0.0
             return
         dirx = (1 if ctl.right else 0) - (1 if ctl.left else 0)
-        if dirx and dirx * b.vx >= -20:
+        if self.golden:
+            self.run_t = self.ramp
+        elif dirx and dirx * b.vx >= -20:
             self.run_t = min(self.ramp, self.run_t + dt)
         else:
             self.run_t = max(0.0, self.run_t - 3 * dt)
         keep = b.vx if self.spin_t > 0 else None
+        self.jump = 1050.0 if self.golden else Sonic.jump
         super().move(ctl, dt)
         if b.hit_wall:
             self.run_t = 0.0
@@ -1010,7 +1073,8 @@ class Sonic(Hero):
     def special(self, ctl, dt):
         """Homing attack: zip at the nearest baddie (or air-dash forward if there's none)."""
         b = self.body
-        if not ctl.special_pressed or self.homing_t > 0 or self.charging or self.energy < 12:
+        cost = 0 if self.golden else 12
+        if not ctl.special_pressed or self.homing_t > 0 or self.charging or self.energy < cost or self.rise_t > 0:
             return
         best, best_d = None, 520.0
         for e in self.world.targets():
@@ -1018,7 +1082,7 @@ class Sonic(Hero):
             d = math.hypot(dx, dy)
             if d < best_d and dx * self.facing > -60:
                 best, best_d = e, d
-        self.energy -= 12
+        self.energy -= cost
         if best is not None:
             ang = math.atan2(best.body.cy - b.cy, best.body.cx - b.cx)
             b.vx, b.vy = math.cos(ang) * 1150, math.sin(ang) * 1150
@@ -1032,7 +1096,7 @@ class Sonic(Hero):
     def alt(self, ctl, dt):
         """Spin dash: hold SHIFT on the ground to rev up, let go to launch."""
         b = self.body
-        if ctl.alt_held and b.on_ground and self.spin_t <= 0 and self.homing_t <= 0:
+        if ctl.alt_held and b.on_ground and self.spin_t <= 0 and self.homing_t <= 0 and self.rise_t <= 0:
             if not self.charging:
                 self.charging = True
                 self.charge = 0.0
@@ -1056,6 +1120,14 @@ class Sonic(Hero):
             return
         b = self.body
         self.spin_t = max(0.0, self.spin_t - dt)
+        if self.golden:
+            self.golden_t = max(0.0, self.golden_t - dt)
+            self.energy = 100 * self.golden_t / self.golden_time  # the bar shows golden time left
+            if int(self.t * 30) % 3 == 0:
+                self.world.burst(b.cx, b.cy, (255, 225, 90), 1, 120)
+            if not self.golden:
+                self.end_golden()
+                self.say("Back to blue!")
         if self.spiky():
             self.spike(b)
         self.trail.append((b.cx, b.bottom, self.facing, b.on_ground))
@@ -1067,10 +1139,17 @@ class Sonic(Hero):
         hit = False
         for e in w.targets():
             if e.body.rect.colliderect(r) and self.spike_cd.get(e.uid, 0) <= self.t:
-                self.spike_cd[e.uid] = self.t + 0.35
                 d = 1 if e.body.cx >= b.cx else -1
-                e.hurt(w, self.spike_damage * (1.4 if self.homing_t > 0 else 1.0), d, 420)
-                w.burst(e.body.cx, e.body.cy, (120, 180, 255), 10, 320)
+                is_boss = e is w.boss
+                if self.golden:
+                    # Golden Sonic defeats ordinary baddies in one hit and takes big chunks off a boss
+                    self.spike_cd[e.uid] = self.t + (0.5 if is_boss else 0.1)
+                    e.hurt(w, self.golden_boss_damage if is_boss else e.hp, d, 600)
+                    w.burst(e.body.cx, e.body.cy, (255, 225, 90), 16, 420)
+                else:
+                    self.spike_cd[e.uid] = self.t + 0.35
+                    e.hurt(w, self.spike_damage * (1.4 if self.homing_t > 0 else 1.0), d, 420)
+                    w.burst(e.body.cx, e.body.cy, (120, 180, 255), 10, 320)
                 hit = True
         if hit:
             w.audio.play("hit")
@@ -1080,6 +1159,12 @@ class Sonic(Hero):
                 b.vy = -650
 
     def info_line(self):
+        if self.rise_t > 0:
+            return "POWERING UP!"
+        if self.golden:
+            return f"GOLDEN SONIC {math.ceil(self.golden_t)}s"
+        if self.energy >= 100:
+            return "F: GO GOLDEN!"
         if self.charging:
             return f"SPIN DASH {int(self.charge * 100)}%"
         if self.spiky():
@@ -1090,10 +1175,16 @@ class Sonic(Hero):
         resting = self.resting is not None
         ball = not resting and (self.charging or self.spin_t > 0 or self.homing_t > 0
                                 or (air and self.body.vy < 0))
+        gold = self.golden or (self.rise_t > 0 and int(self.rise_t * 14) % 2 == 0)
+        if gold and air and not self.charging and self.homing_t <= 0:
+            ball = False  # Golden Sonic shows off rather than curling up
         art.draw_sonic(surf, cx, bottom, facing, self.t, moving or (self.fast() and not air), air, punch,
-                       ball=ball, fast=self.fast() and not resting)
+                       ball=ball, fast=self.fast() and not resting, gold=gold)
 
     def draw_behind(self, surf, cam):
+        if (self.golden or self.rise_t > 0) and self.resting is None:
+            b = self.body
+            art.draw_golden_aura(surf, b.cx - cam[0], b.cy - cam[1], self.t, 1.0 + 0.4 * (self.rise_t > 0))
         if not self.fast() or self.resting is not None or len(self.trail) < 10:
             return
         size = 160

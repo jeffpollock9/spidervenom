@@ -374,6 +374,48 @@ def run(shots_dir=None):
     if abs(p.body.vx) < 900 or not p.spiky():
         failures.append(f"sonic spin dash broken (vx {p.body.vx:.0f})")
 
+    # Golden Sonic: F at full energy lifts him into the air, then he defeats whatever he runs into
+    w = World(0, "sonic", audio)
+    p = w.player
+    w.enemies.clear()
+    for f in range(10):
+        w.update(Controls(), DT)
+    p.energy = 100
+    ground_y = p.body.y
+    c = Controls(); c.ult_pressed = True; c.aim = (0, 0)
+    w.update(c, DT)
+    highest = p.body.y
+    for f in range(65):
+        w.update(Controls(), DT)
+        highest = min(highest, p.body.y)
+        if f == 25 and shots_dir:
+            shot(surf, w, shots_dir, "sonic_rising")
+    print(f"golden sonic: rose {ground_y - highest:.0f}px, golden={p.golden}")
+    if not p.golden or ground_y - highest < 60:
+        failures.append(f"golden sonic transform broken (golden={p.golden}, rose {ground_y - highest:.0f})")
+    for f in range(40):
+        w.update(Controls(), DT)
+    foes = []
+    for k in range(3):
+        w.spawn_enemy("walker", p.body.x + 140 + k * 70, GROUND_ROW * TILE, "neon")
+        foes.append(w.enemies[-1])
+    hp_before = p.hp
+    hurt = p.take_damage(50, p.body.cx - 10)
+    for f in range(30):
+        c = Controls(); c.right = True; c.aim = (0, 0)
+        w.update(c, DT)
+        if f == 8 and shots_dir:
+            shot(surf, w, shots_dir, "sonic_golden")
+    alive = sum(not e.dead for e in foes)
+    print(f"golden sonic: {3 - alive}/3 baddies defeated, hurt={hurt}, hp {hp_before:.0f}->{p.hp:.0f}, "
+          f"{p.golden_t:.1f}s left")
+    if alive or hurt or p.hp < hp_before:
+        failures.append(f"golden sonic run broken ({alive} foes left, hurt={hurt})")
+    for f in range(60 * 10):
+        w.update(Controls(), DT)
+    if p.golden:
+        failures.append("golden sonic never wore off")
+
     # Losing works
     w = World(0, "spiderman", audio)
     w.player.take_damage(1000)

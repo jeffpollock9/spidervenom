@@ -15,7 +15,7 @@ CONTROLS = [
     ("RIGHT CLICK  (K)", "Special power"),
     ("SHIFT  (E)", "Extra power (swing, dash, jump...)"),
     ("R", "Reload (Harry)"),
-    ("F  (X / MIDDLE CLICK)", "Ultimate (Venom, Ninja Kids)"),
+    ("F  (X / MIDDLE CLICK)", "Ultimate (Venom, Ninja Kids, Sonic)"),
     ("ESC", "Pause"),
     ("F11 / M", "Fullscreen / music on-off"),
 ]
