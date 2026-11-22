@@ -75,7 +75,7 @@ func aim_point(exclude_rid: RID) -> Vector3:
 	var centre := camera.get_viewport().get_visible_rect().size * 0.5
 	var origin := camera.project_ray_origin(centre)
 	var dir := camera.project_ray_normal(centre)
-	var q := PhysicsRayQueryParameters3D.create(origin, origin + dir * 250.0, 1, [exclude_rid])
+	var q := PhysicsRayQueryParameters3D.create(origin, origin + dir * 250.0, 1 | 16, [exclude_rid])
 	var hit := get_world_3d().direct_space_state.intersect_ray(q)
 	return hit.position if hit else origin + dir * 250.0
 

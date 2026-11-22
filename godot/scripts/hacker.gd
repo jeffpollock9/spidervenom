@@ -45,7 +45,7 @@ func glitch(ctl: Controls) -> void:
 	wish = Vector3(wish.x, 0, wish.z).normalized()
 	var from := center()
 	var dist := 7.0
-	var q := PhysicsRayQueryParameters3D.create(from, from + wish * (dist + 1.0), 1, [get_rid()])
+	var q := PhysicsRayQueryParameters3D.create(from, from + wish * (dist + 1.0), 1 | 16, [get_rid()])
 	var hit := get_world_3d().direct_space_state.intersect_ray(q)
 	if hit:
 		dist = max(0.0, from.distance_to(hit.position) - 1.0)

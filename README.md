@@ -40,7 +40,7 @@ A third-person 3D version made with [Godot 4](https://godotengine.org). Pick **V
 
 `./install.sh` also adds **SpiderVenomn 3D** to your app menu. After that, `git pull` is all you need for updates.
 
-After the title screen you choose your hero (A/D or 1-7, then Space). Press **H** on the pause or end screen to change hero.
+After the title screen you choose your hero (A/D or 1-7) and which boss to fight (W/S or Tab: **Mr Poo** or **Ms Cattoon**), then Space. Press **H** on the pause or end screen to change hero.
 
 Controls for both heroes:
 
@@ -95,6 +95,13 @@ The **Hacker** can hack:
 - **F (full energy): reindeer stampede.** All nine reindeer charge in, one for every robot nearby (spare ones go for Mr Poo). Every robot is knocked out.
 
 Run down the avenue between the skyscrapers. Ride the yellow sky-lifts over the two broken bits of road, or swing or fly across. Falling in costs 15 health. At the end of the street is a plaza. When you go in, the gate shuts behind you and Mr Poo wakes up. He hops at you and lobs poo that leaves slippery puddles. At half health he gets angry: he throws more poo, his landings send out shockwaves you have to jump over, and he spawns mini-poos.
+
+**Ms Cattoon** is the other boss: a giant stinky cartoon cat-lady, 9 metres tall, in cat-eye glasses, curlers, a cardigan and a polka-dot dress, with mouldy patches on her fur and flies buzzing round her head. She stinks:
+
+- A green cloud of stink hangs round her all the time (you can see it on the ground). Standing in it hurts. She wades straight through the plaza platforms.
+- She stomps after you, and fires balls of stink that burst into clouds that hang about for a few seconds. Don't stand in them.
+- Get too close and she swings her handbag at you.
+- At half health she gets angry: her stink gets bigger, she fires three stink balls at a time, and every so often she puffs up ("!!!") and lets off a **STINK BOMB**, a huge cloud right round her. Get out of the way, or get up high above it (fly, jetpack, sleigh, or a platform won't do, it's not high enough!).
 
 Everything is built in code (`godot/scripts/`): the models, the city and the sound. There are no asset files. Run the test with `./run3d.sh --selftest`.
 

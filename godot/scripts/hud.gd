@@ -173,7 +173,7 @@ func _draw() -> void:
 	# boss bar
 	var b = game.boss
 	if game.gate_closed and is_instance_valid(b) and not b.dead:
-		text("MR POO", Vector2(sz.x / 2, sz.y - 64), 28, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+		text(b.boss_name.to_upper(), Vector2(sz.x / 2, sz.y - 64), 28, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 		bar(Rect2(sz.x / 2 - 350, sz.y - 50, 700, 22), b.hp / b.max_hp,
 			Color(0.9, 0.15, 0.15) if b.phase == 1 else Color(1, 0.5, 0.1))
 	# message over the hero
@@ -207,7 +207,8 @@ func _draw() -> void:
 				var won: bool = game.state == "won"
 				text("SUPERCITY IS SAVED!" if won else "DEFEATED!", Vector2(sz.x / 2, sz.y / 2 - 70), 80,
 					Color(1, 0.9, 0.3) if won else Color(1, 0.3, 0.3), HORIZONTAL_ALIGNMENT_CENTER, -1, 12)
-				text("You beat Mr Poo!" if won else "Mr Poo rules Supercity... for now.", Vector2(sz.x / 2, sz.y / 2 - 10),
+				var bn: String = {"mrpoo": "Mr Poo", "cattoon": "Ms Cattoon"}[game.boss_id]
+				text(("You beat %s!" % bn) if won else ("%s rules Supercity... for now." % bn), Vector2(sz.x / 2, sz.y / 2 - 10),
 					34, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 				text("SCORE %d     TIME %d:%02d" % [game.score, int(game.t) / 60, int(game.t) % 60],
 					Vector2(sz.x / 2, sz.y / 2 + 40), 28, Color(1, 0.9, 0.45), HORIZONTAL_ALIGNMENT_CENTER)
@@ -221,7 +222,7 @@ func _draw_title(sz: Vector2) -> void:
 	text("VENOMN", Vector2(sz.x / 2 + 8, 130), 110, Color(0.06, 0.06, 0.08), HORIZONTAL_ALIGNMENT_LEFT, -1, 0)
 	_outline_white("VENOMN", Vector2(sz.x / 2 + 8, 130), 110)
 	text("3D", Vector2(sz.x / 2, 200), 60, Color(1, 0.9, 0.3), HORIZONTAL_ALIGNMENT_CENTER, -1, 10)
-	text("Save Supercity from Mr Poo!", Vector2(sz.x / 2, 250), 30, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	text("Save Supercity from Mr Poo and Ms Cattoon!", Vector2(sz.x / 2, 250), 30, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	text("Seven heroes to choose from", Vector2(sz.x / 2, 330), 30, Color(1, 0.9, 0.45), HORIZONTAL_ALIGNMENT_CENTER)
 	var y := 400.0
 	for row in COMMON:
@@ -263,6 +264,20 @@ func _draw_select(sz: Vector2) -> void:
 		text(row[0], Vector2(40, y), 19, Color(1, 0.9, 0.45))
 		text(row[1], Vector2(250, y), 19, Color.WHITE)
 		y += 30
+	# which boss to fight
+	var bx := 40.0
+	var by := sz.y - 110
+	text("BOSS:", Vector2(bx, by + 24), 24, Color(1, 0.9, 0.45))
+	var names := {"mrpoo": "MR POO", "cattoon": "MS CATTOON"}
+	var bossx := bx + 90
+	for id in game.BOSSES:
+		var chosen: bool = id == game.boss_id
+		var r := Rect2(bossx, by, 170, 34)
+		draw_rect(r, Color(0.55, 0.8, 0.2, 0.35) if chosen else Color(0.15, 0.15, 0.2, 0.8))
+		draw_rect(r, Color(0.7, 1.0, 0.3) if chosen else Color(0.4, 0.4, 0.5), false, 3.0 if chosen else 1.5)
+		text(names[id], r.position + Vector2(10, 25), 18, Color.WHITE if chosen else Color(0.7, 0.7, 0.75))
+		bossx += 178
+	text("W / S or TAB", Vector2(bossx + 6, by + 24), 16, Color(0.8, 0.8, 0.85))
 	var pulse := 0.6 + 0.4 * sin(Time.get_ticks_msec() / 250.0)
 	text("A / D or 1-%d: change hero      SPACE / CLICK: PLAY" % heroes.size(), Vector2(40, sz.y - 40), 24,
 		Color(1, 1, 1, pulse))

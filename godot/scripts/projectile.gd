@@ -51,6 +51,13 @@ func setup(g, pos: Vector3, v: Vector3, side: String, k: String, dmg: float, r: 
 					Vector3(cos(a), sin(a), 0) * r * 0.6 + Vector3(0, 0, r * 1.2))
 				mi.rotation = Vector3(PI / 2 + sin(a) * 0.35, 0, 0)
 				mi.rotation.y = -cos(a) * 0.35
+		"stink":
+			Models.part(self, Models.sphere(r, 12), Models.stink_material(0.6))
+			Models.part(self, Models.sphere(r * 0.6, 10), Models.stink_material(0.5), Vector3(r * 0.6, r * 0.3, 0))
+			for i in 3:
+				var f := Models.fly()
+				f.position = Vector3(cos(i * 2.1), sin(i * 2.1), 0.3) * r * 1.2
+				add_child(f)
 		"present":
 			var colours := [Color(0.2, 0.7, 0.3), Color(0.3, 0.45, 0.95), Color(0.95, 0.8, 0.2), Color(0.8, 0.2, 0.7)]
 			Models.part(self, Models.box(Vector3.ONE * r * 1.6), Models.mat(colours[randi() % colours.size()], 0.5))
@@ -112,7 +119,7 @@ func tick(dt: float) -> void:
 			var want: Vector3 = (best.center() - position).normalized() * vel.length()
 			vel = vel.lerp(want, min(1.0, 7.0 * dt))
 	var nxt := position + vel * dt
-	var q := PhysicsRayQueryParameters3D.create(position, nxt, 1)
+	var q := PhysicsRayQueryParameters3D.create(position, nxt, 1 | 16)
 	var hit := get_world_3d().direct_space_state.intersect_ray(q)
 	if hit:
 		position = hit.position
@@ -160,6 +167,9 @@ func kill(hit_ground: bool) -> void:
 		game.burst(position, Color(1.0, 0.85, 0.3), 14, 7.0)
 		game.burst(position, Color(0.9, 0.15, 0.15), 10, 6.0)
 	match kind:
+		"stink":  # bursts into a cloud that hangs about
+			game.add_stink_cloud(position + Vector3.DOWN * 1.0, 3.5, 4.0, 6.0, 6.0)
+			game.audio.play("splat")
 		"poo":
 			game.burst(position, Color(0.45, 0.28, 0.12), 10, 6.0)
 			game.audio.play("splat")

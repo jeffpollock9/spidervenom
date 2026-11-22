@@ -86,7 +86,7 @@ func _init(g) -> void:
 	hp = max_hp
 	radius = 0.55 * size
 	collision_layer = 2
-	collision_mask = 1
+	collision_mask = 1 | 16  # the world, plus the plaza platforms (layer 16)
 	floor_snap_length = 0.3
 	floor_max_angle = deg_to_rad(50)
 
@@ -365,7 +365,7 @@ func try_swing(pressed: bool) -> void:
 	var dir := (aim - from).normalized()
 	if not pressed and dir.y < 0.2:
 		return
-	var q := PhysicsRayQueryParameters3D.create(from, from + dir * 70.0, 1, [get_rid()])
+	var q := PhysicsRayQueryParameters3D.create(from, from + dir * 70.0, 1 | 16, [get_rid()])
 	var hit := get_world_3d().direct_space_state.intersect_ray(q)
 	var point: Vector3
 	if hit and (hit.position as Vector3).y > global_position.y + 1.0:

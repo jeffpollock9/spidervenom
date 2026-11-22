@@ -74,6 +74,11 @@ func clear_enemies() -> void:
 func run() -> void:
 	var t0 := Time.get_ticks_msec()
 	game.hero_id = "venom"
+	game.boss_id = "mrpoo"
+	if OS.get_cmdline_user_args().has("--cattoon-only"):
+		await cattoon_tests()
+		_finish(t0)
+		return
 	if OS.get_cmdline_user_args().has("--spiderman-only"):
 		await spiderman_tests()
 		_finish(t0)
@@ -279,7 +284,7 @@ func run() -> void:
 	await frames(10)
 	check(game.gate_closed, "entering the plaza closes the gate")
 	await frames(140)
-	var boss: MrPoo = game.boss
+	var boss: Boss = game.boss
 	check(boss.active, "Mr Poo wakes up")
 	var hp_start := boss.hp
 	var saw_poo := false
@@ -335,6 +340,7 @@ func run() -> void:
 	await charley_tests()
 	await hacker_tests()
 	await santa_tests()
+	await cattoon_tests()
 	_finish(t0)
 
 
@@ -539,7 +545,7 @@ func spiderman_tests() -> void:
 	clear_enemies()
 	p.global_position = Vector3(275, 0.3, 0)
 	await frames(150)
-	var boss: MrPoo = game.boss
+	var boss: Boss = game.boss
 	check(boss.active, "Mr Poo wakes up for Spider-Man")
 	var hp_start := boss.hp
 	var damage := 0.0
@@ -710,7 +716,7 @@ func dad_tests() -> void:
 	clear_enemies()
 	p.global_position = Vector3(275, 0.3, 0)
 	await frames(150)
-	var boss: MrPoo = game.boss
+	var boss: Boss = game.boss
 	var hp_start := boss.hp
 	var damage := 0.0
 	for f in 60 * 10:
@@ -828,7 +834,7 @@ func jamie_tests() -> void:
 	clear_enemies()
 	p.global_position = Vector3(275, 0.3, 0)
 	await frames(150)
-	var boss: MrPoo = game.boss
+	var boss: Boss = game.boss
 	var hp_start := boss.hp
 	var damage := 0.0
 	for f in 60 * 12:  # stand right next to him the whole time
@@ -992,7 +998,7 @@ func charley_tests() -> void:
 	clear_enemies()
 	p.global_position = Vector3(275, 0.3, 0)
 	await frames(150)
-	var boss: MrPoo = game.boss
+	var boss: Boss = game.boss
 	var calls := 0
 	for f in 60 * 60:
 		if not is_instance_valid(boss) or boss.dead:
@@ -1132,7 +1138,7 @@ func hacker_tests() -> void:
 	clear_enemies()
 	p.global_position = Vector3(275, 0.3, 0)
 	await frames(150)
-	var boss: MrPoo = game.boss
+	var boss: Boss = game.boss
 	for k in 3:
 		var helper: Enemy = game.spawn_enemy("shooter" if k == 0 else "walker", Vector3(278, 0.5, -4 + k * 4))
 		helper.hack(30.0)
@@ -1295,7 +1301,7 @@ func santa_tests() -> void:
 	clear_enemies()
 	p.global_position = Vector3(275, 0.3, 0)
 	await frames(150)
-	var boss: MrPoo = game.boss
+	var boss: Boss = game.boss
 	var hp_start := boss.hp
 	var damage := 0.0
 	for f in 60 * 12:
@@ -1319,3 +1325,151 @@ func santa_tests() -> void:
 	cur = Controls.new()
 	await frames(220)
 	check(game.finished == "won", "Santa saves Supercity (%s)" % game.finished)
+
+
+func cattoon_tests() -> void:
+	print("  --- Ms Cattoon")
+	game.hero_id = "venom"
+	game.boss_id = "mrpoo"
+	game.state = "title"
+	game.new_game()
+	game.open_select()
+	game.choose_boss(1)
+	await frames(10)
+	check(game.boss_id == "cattoon" and game.boss is Cattoon, "the select screen picks Ms Cattoon as the boss")
+	await shot("cattoon_select")
+	game.choose_boss(1)
+	check(game.boss is MrPoo, "and back to Mr Poo")
+	game.choose_boss(1)
+	game.start_play()
+
+	# --- she wakes up in the plaza
+	var p := await fresh()
+	clear_enemies()
+	var boss: Boss = game.boss
+	check(boss is Cattoon, "Ms Cattoon is the boss")
+	p.global_position = Vector3(275, 0.3, 0)
+	await frames(10)
+	check(game.gate_closed and game.banner_text == "BOSS: MS CATTOON", "entering the plaza: %s" % game.banner_text)
+	await frames(140)
+	check(boss.active, "Ms Cattoon wakes up")
+	# heroes can still stand on the plaza platforms (she wades through them)
+	p.global_position = Vector3(300, 9.0, 0)
+	p.velocity = Vector3.ZERO
+	await frames(60)
+	check(p.is_on_floor() and p.global_position.y > 6.0, "heroes still land on the plaza platforms (y %.1f)" % p.global_position.y)
+	if shots_dir != "":  # a good look at her
+		boss.daze(3.0)
+		boss.global_position = Vector3(287, 0.2, 0)
+		p.global_position = Vector3(268, 0.5, 0)
+		boss.face_yaw = PI / 2
+		await frames(20)
+		game.rig.face_dir(Vector3.RIGHT)
+		game.rig.pitch = 0.12
+		game.rig.shoulder = 3.5
+		await frames(5)
+		await shot("cattoon")
+		game.rig.shoulder = p.size
+
+	# --- she stinks: standing next to her hurts
+	boss.stun_t = 3.0  # hold her still
+	p.global_position = boss.global_position + Vector3(-5.5, 0.5, 0)
+	p.velocity = Vector3.ZERO
+	var hp0 := p.hp
+	await frames(150)
+	check(p.hp < hp0, "standing in her stink hurts (%d -> %d)" % [hp0, p.hp])
+	p.hp = p.max_hp
+
+	# --- her stink shots leave clouds that hang about and hurt
+	p.global_position = boss.global_position + Vector3(-16, 0.5, 0)
+	await frames(30)
+	boss.stun_t = 0.0
+	var cloud := false
+	for i in 60 * 8:
+		await frames(1)
+		p.hp = p.max_hp
+		if game.stink_clouds.size() > 0:
+			cloud = true
+			break
+	check(cloud, "she fires stink that leaves a cloud")
+	if cloud:
+		await shot("cattoon_cloud")
+		var c: Dictionary = game.stink_clouds[0]
+		boss.daze(5.0)
+		p.global_position = c["pos"] + Vector3(0, 0.5, 0)
+		p.velocity = Vector3.ZERO
+		p.invuln = 0.0
+		hp0 = p.hp
+		await frames(60)
+		check(p.hp < hp0, "standing in a stink cloud hurts (%d -> %d)" % [hp0, p.hp])
+	p.hp = p.max_hp
+
+	# --- the stink bomb when she's angry: fly above it to stay safe
+	boss.hurt(boss.hp - boss.max_hp * 0.45, Vector3.ZERO)
+	check(boss.phase == 2, "Ms Cattoon gets angry at half health")
+	boss.stun_t = 0.0
+	p.global_position = boss.global_position + Vector3(-12, 14, 0)
+	p.flying = true
+	cur.jump_held = true
+	var bombed := false
+	var hurt_high := false
+	for i in 60 * 12:
+		cur.jump_held = p.global_position.y < boss.global_position.y + 14.0
+		var before := p.hp
+		await frames(1)
+		if p.hp < before:
+			hurt_high = true
+		for sc in game.stink_clouds:
+			if sc["r"] > 10.0:
+				bombed = true
+		if bombed:
+			break
+		p.hp = p.max_hp
+	check(bombed, "an angry Ms Cattoon sets off a STINK BOMB")
+	await frames(10)
+	await shot("cattoon_bomb")
+	hp0 = p.hp
+	await frames(90)
+	check(p.hp == hp0 and not hurt_high, "flying high above the stink bomb keeps you safe")
+	cur = Controls.new()
+	p.flying = false
+	await frames(5)
+	p.global_position = boss.global_position + Vector3(-11, 0.5, 0)
+	p.velocity = Vector3.ZERO
+	p.invuln = 0.0
+	hp0 = p.hp
+	await frames(30)
+	check(p.hp < hp0, "but down in it, it hurts")
+
+	# --- Venom fights her
+	p = await fresh()
+	clear_enemies()
+	p.global_position = Vector3(275, 0.3, 0)
+	await frames(150)
+	boss = game.boss
+	var hp_start := boss.hp
+	var damage := 0.0
+	for f in 60 * 12:
+		if not is_instance_valid(boss) or boss.dead:
+			break
+		p.hp = p.max_hp
+		cur.aim_override = boss.center()
+		var to := boss.global_position - p.global_position
+		cur.move = Vector2(0, 1) if Vector2(to.x, to.z).length() > 12.0 else Vector2(0, -0.6)
+		game.rig.face_dir(Vector3(to.x, 0, to.z).normalized())
+		cur.special_pressed = f % 25 == 0
+		await frames(1)
+		if is_instance_valid(boss):
+			damage = hp_start - boss.hp
+		if f == 240:
+			await shot("cattoon_fight")
+	check(damage > 100.0, "Venom blasts Ms Cattoon (%.0f damage)" % damage)
+	if is_instance_valid(boss) and not boss.dead:
+		boss.hurt(1e6, Vector3.ZERO)
+	cur = Controls.new()
+	await frames(10)
+	check(game.banner_text == "MS CATTOON DEFEATED!", "banner: %s" % game.banner_text)
+	await frames(220)
+	check(game.finished == "won", "beating Ms Cattoon wins (%s)" % game.finished)
+	await shot("cattoon_won")
+	game.boss_id = "mrpoo"

@@ -12,7 +12,10 @@ var player: Hero
 var hero_id := "venom"
 var rig: CameraRig
 var hud: Hud
-var boss: MrPoo
+var boss: Boss
+const BOSSES := ["mrpoo", "cattoon"]
+var boss_id := "mrpoo"
+var stink_clouds: Array = []  # {node, pos, r, h, life, max, dmg, tick}
 var enemies: Array = []
 var projectiles: Array = []
 var puddles: Array = []     # {node, pos, radius, life}
@@ -71,6 +74,7 @@ func new_game() -> void:
 	particles.clear()
 	popups.clear()
 	reindeer.clear()
+	stink_clouds.clear()
 	world = Node3D.new()
 	add_child(world)
 	level = LevelSupercity.new()
@@ -82,7 +86,7 @@ func new_game() -> void:
 		spawn_enemy(s[0], s[1])
 	for p in level.pickups:
 		_add_pickup(p[0], p[1])
-	boss = MrPoo.new(self)
+	boss = make_boss(boss_id, self)
 	boss.position = level.boss_pos
 	world.add_child(boss)
 	rig.follow(0.0, true)
@@ -93,6 +97,23 @@ func new_game() -> void:
 	state_t = 0.0
 	if state != "title":
 		start_play()
+
+
+static func make_boss(id: String, g) -> Boss:
+	if id == "cattoon":
+		return Cattoon.new(g)
+	return MrPoo.new(g)
+
+
+func choose_boss(step: int) -> void:
+	var i := (BOSSES.find(boss_id) + step + BOSSES.size()) % BOSSES.size()
+	boss_id = BOSSES[i]
+	if boss and is_instance_valid(boss):
+		boss.queue_free()
+	boss = make_boss(boss_id, self)
+	boss.position = level.boss_pos
+	world.add_child(boss)
+	audio.play("select")
 
 
 static func make_hero(id: String, g) -> Hero:
@@ -215,7 +236,7 @@ func _add_pickup(kind: String, pos: Vector3) -> void:
 
 
 func add_puddle(pos: Vector3) -> void:
-	var q := PhysicsRayQueryParameters3D.create(pos + Vector3.UP, pos + Vector3.DOWN * 3.0, 1)
+	var q := PhysicsRayQueryParameters3D.create(pos + Vector3.UP, pos + Vector3.DOWN * 3.0, 1 | 16)
 	var hit := get_world_3d().direct_space_state.intersect_ray(q)
 	if not hit:
 		return
@@ -411,7 +432,8 @@ func system_hack(at: Vector3) -> void:
 			popup(e.center() + Vector3.UP * 1.5, "DELETED", Color(0.3, 1.0, 0.5))
 			e.hurt(e.hp, Vector3.ZERO, 0.0)
 	if boss and boss.active and not boss.dead and boss.center().distance_to(at) < 45.0:
-		popup(boss.center() + Vector3.UP * 4.5, "MR_POO.EXE HAS STOPPED WORKING", Color(1, 0.4, 0.4))
+		popup(boss.center() + Vector3.UP * 4.5, "%s.EXE HAS STOPPED WORKING" % boss.boss_name.to_upper().replace(" ", "_"),
+			Color(1, 0.4, 0.4))
 		boss.hurt(boss.max_hp * 0.15, Vector3.ZERO)
 		if not boss.dead:
 			boss.daze(4.0)
@@ -499,7 +521,27 @@ func streak(pos: Vector3, dir: Vector3) -> void:
 	particles.append({"node": mi, "vel": Vector3(0, 0.1, 0), "life": 0.25, "max": 0.25})
 
 
-func boss_defeated(b: MrPoo) -> void:
+func add_stink_cloud(pos: Vector3, r: float, h: float, life: float, dmg: float, big := false) -> void:
+	## A green cloud of stink that hangs about. Standing in it hurts; get above it or out of it.
+	var n := Node3D.new()
+	n.position = pos
+	world.add_child(n)
+	var count := 14 if big else 6
+	for i in count:
+		var a := randf() * TAU
+		var rr := sqrt(randf()) * r * 0.8
+		var s := randf_range(0.5, 0.9) * (r * 0.45 if big else r * 0.6)
+		Models.part(n, Models.sphere(1.0, 10), Models.stink_material(0.3),
+			Vector3(cos(a) * rr, randf_range(0.3, h * 0.6), sin(a) * rr), Vector3.ZERO, Vector3(s, s * 0.7, s))
+	var disc := Models.part(n, Models.cylinder(r, r, 0.04, 28), Models.stink_material(0.25), Vector3(0, 0.08, 0))
+	disc.name = "disc"
+	for i in (5 if big else 2):
+		var f := Models.fly()
+		n.add_child(f)
+	stink_clouds.append({"node": n, "pos": pos, "r": r, "h": h, "life": life, "max": life, "dmg": dmg, "tick": 0.0})
+
+
+func boss_defeated(b: Boss) -> void:
 	for i in 6:
 		burst(b.center() + Vector3(randf_range(-2, 2), randf_range(-2, 2), randf_range(-2, 2)), Color(1, 0.8, 0.3), 20, 12.0)
 	b.queue_free()
@@ -508,7 +550,7 @@ func boss_defeated(b: MrPoo) -> void:
 	audio.music("")
 	shake(1.0)
 	score += 5000
-	banner("MR POO DEFEATED!", 3.0)
+	banner("%s DEFEATED!" % b.boss_name.to_upper(), 3.0)
 	state = "won"
 	state_t = 3.2
 	player.invuln = 99.0
@@ -533,7 +575,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif event.is_action_pressed("pause"):
 				get_tree().quit()
 		"select":
-			if event.is_action_pressed("move_left"):
+			if event.is_action_pressed("move_forward") or event.is_action_pressed("move_back") \
+					or event is InputEventKey and event.pressed and event.physical_keycode == KEY_TAB:
+				choose_boss(1)
+			elif event.is_action_pressed("move_left"):
 				choose_hero(-1)
 			elif event.is_action_pressed("move_right"):
 				choose_hero(1)
@@ -662,13 +707,42 @@ func _update_arena(dt: float) -> void:
 		gate_closed = true
 		level.close_gate()
 		intro_t = 2.0
-		banner("BOSS: MR POO", 2.0)
+		banner("BOSS: %s" % boss.boss_name.to_upper(), 2.0)
 		audio.play("roar")
 		audio.music("boss")
 		shake(0.6)
 
 
+func _update_stink(dt: float) -> void:
+	for c in stink_clouds.duplicate():
+		c["life"] -= dt
+		var n: Node3D = c["node"]
+		if c["life"] <= 0.0:
+			n.queue_free()
+			stink_clouds.erase(c)
+			continue
+		var k: float = min(1.0, c["life"] / 0.8)
+		n.scale = Vector3(1.0, 0.3 + 0.7 * k, 1.0) * (0.6 + 0.4 * min(1.0, (c["max"] - c["life"]) * 3.0))
+		var i := 0
+		for ch in n.get_children():
+			if ch.name == "disc":
+				continue
+			if ch.get_child_count() > 0:  # a fly
+				var a: float = t * 5.0 + i
+				ch.position = Vector3(cos(a) * c["r"] * 0.5, 1.5 + sin(a * 1.3) * 0.5, sin(a) * c["r"] * 0.5)
+			else:
+				ch.position.y += sin(t * 2.0 + i) * dt * 0.3
+			i += 1
+		c["tick"] -= dt
+		var d: Vector3 = player.global_position - c["pos"]
+		if Vector2(d.x, d.z).length() < c["r"] and d.y > -1.0 and d.y < c["h"] and c["tick"] <= 0.0:
+			c["tick"] = 0.7
+			if player.take_damage(c["dmg"], c["pos"], 1.0) and randf() < 0.4:
+				player.say("*cough* *cough*", 0.8)
+
+
 func _update_hazards(dt: float) -> void:
+	_update_stink(dt)
 	for p in puddles.duplicate():
 		p["life"] -= dt
 		if p["life"] <= 0.0:

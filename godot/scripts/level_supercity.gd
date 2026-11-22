@@ -303,10 +303,12 @@ func _arena() -> void:
 		solid_box(Vector3(ARENA_X0 - 0.5, 30, side * (STREET_HALF + 1 + (ARENA_HALF_Z - STREET_HALF) / 2)),
 			Vector3(3, 64, ARENA_HALF_Z - STREET_HALF - 2), towers[1])
 	# platforms to get above the poo, like the 2D arena's planks
+	# (on their own collision layer, 16, so a giant boss like Ms Cattoon can wade through them)
 	var plat := Models.mat(Color(0.9, 0.7, 0.15), 0.4, 0.3)
-	solid_box(Vector3(280, 3.2, -16), Vector3(8, 0.5, 5), plat)
-	solid_box(Vector3(280, 3.2, 16), Vector3(8, 0.5, 5), plat)
-	solid_box(Vector3(300, 6.4, 0), Vector3(6, 0.5, 8), plat)
+	for pb in [solid_box(Vector3(280, 3.2, -16), Vector3(8, 0.5, 5), plat),
+			solid_box(Vector3(280, 3.2, 16), Vector3(8, 0.5, 5), plat),
+			solid_box(Vector3(300, 6.4, 0), Vector3(6, 0.5, 8), plat)]:
+		(pb as StaticBody3D).collision_layer = 16
 	for p in [Vector3(276.5, 1.6, -16), Vector3(283.5, 1.6, -16), Vector3(276.5, 1.6, 16), Vector3(283.5, 1.6, 16)]:
 		deco(p, Vector3(0.3, 3.2, 0.3), Models.mat(Color(0.3, 0.3, 0.35), 0.5, 0.5))
 	pickups.append(["health", Vector3(300, 8.0, 0)])

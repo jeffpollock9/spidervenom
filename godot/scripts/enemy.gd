@@ -30,7 +30,7 @@ func _init(g, k: String) -> void:
 	game = g
 	kind = k
 	collision_layer = 4
-	collision_mask = 1
+	collision_mask = 1 | 16  # the world, plus the plaza platforms (layer 16)
 	match kind:
 		"shooter":
 			hp = 32.0
@@ -245,5 +245,5 @@ func tick(dt: float) -> void:
 
 func _ground_ahead() -> bool:
 	var from := global_position + dir * 0.9 + Vector3.UP * 0.5
-	var q := PhysicsRayQueryParameters3D.create(from, from + Vector3.DOWN * 2.0, 1)
+	var q := PhysicsRayQueryParameters3D.create(from, from + Vector3.DOWN * 2.0, 1 | 16)
 	return not get_world_3d().direct_space_state.intersect_ray(q).is_empty()

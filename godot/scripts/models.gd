@@ -1039,6 +1039,170 @@ static func santa() -> Dictionary:
 	return d
 
 
+# --------------------------------------------------------------------------- Ms Cattoon
+
+const STINK_GREEN := Color(0.55, 0.8, 0.2)
+
+
+static func stink_material(alpha := 0.35) -> StandardMaterial3D:
+	var key := "stink%s" % alpha
+	if not _mats.has(key):
+		var m := StandardMaterial3D.new()
+		m.albedo_color = Color(STINK_GREEN, alpha)
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		_mats[key] = m
+	return _mats[key]
+
+
+static func fly() -> Node3D:
+	var n := Node3D.new()
+	part(n, sphere(0.07, 6), mat(Color(0.05, 0.05, 0.05), 0.3))
+	for side: int in [-1, 1]:
+		part(n, box(Vector3(0.12, 0.01, 0.06)), mat(Color(0.9, 0.95, 1.0, 1.0), 0.2), Vector3(0.07 * side, 0.04, 0))
+	return n
+
+
+static func cattoon() -> Dictionary:
+	## Ms Cattoon: a giant stinky cartoon cat-lady, about 6 m tall, facing -Z.
+	var root := Node3D.new()
+	root.name = "CattoonModel"
+	var fur := mat(Color(0.48, 0.45, 0.46), 0.9)
+	var mould := mat(Color(0.42, 0.58, 0.12), 0.9)
+	var pink := mat(Color(0.95, 0.55, 0.65), 0.7)
+	var dress := mat(Color(0.5, 0.25, 0.55), 0.8)
+	var dots := mat(Color(0.85, 0.7, 0.9), 0.8)
+	var cardi := mat(Color(0.6, 0.48, 0.2), 0.9)
+	var white := mat(Color(0.97, 0.97, 0.95), 0.6)
+	var black := mat(Color(0.04, 0.04, 0.04), 0.4)
+	var eye := mat(Color(0.85, 0.9, 0.2), 0.2, 0.0, 0.6)
+	var frames := mat(Color(0.85, 0.1, 0.25), 0.3, 0.3)
+	var bag := mat(Color(0.6, 0.1, 0.12), 0.35)
+	var gold := mat(Color(1.0, 0.8, 0.2), 0.25, 0.9)
+	var d := {"root": root}
+	var body := pivot(root, Vector3.ZERO, "body")
+	d["body"] = body
+	# fluffy pink slippers and stumpy legs
+	for side: int in [-1, 1]:
+		part(body, capsule(0.28, 1.2), fur, Vector3(0.5 * side, 0.75, 0))
+		_muscle(body, 0.35, pink, Vector3(0.5 * side, 0.22, -0.2), Vector3(1.0, 0.6, 1.5))
+	# a huge pear-shaped polka-dot dress and a frumpy cardigan
+	_muscle(body, 1.5, dress, Vector3(0, 2.1, 0), Vector3(1.0, 1.0, 0.9))
+	for k in 14:
+		var a := k * 2.4
+		var y := 1.4 + (k % 5) * 0.3
+		var rr := 1.5 * sqrt(max(0.1, 1.0 - pow((y - 2.1) / 1.5, 2)))
+		part(body, sphere(0.1, 8), dots, Vector3(sin(a) * rr, y, cos(a) * rr * 0.9), Vector3.ZERO, Vector3(1, 1, 0.4))
+	_muscle(body, 1.25, cardi, Vector3(0, 3.1, 0.05), Vector3(1.05, 0.8, 0.95))
+	_muscle(body, 0.75, dress, Vector3(0, 3.1, -0.55), Vector3(0.7, 0.85, 0.6))  # dress showing at the front
+	for k in 3:
+		part(body, sphere(0.07, 8), gold, Vector3(0.48, 2.85 + k * 0.25, -1.05 + k * 0.05))
+	# a long stripy tail curling up behind her
+	var tail_segs: Array[Node3D] = []
+	var prev := pivot(body, Vector3(0, 1.4, 1.2), "tail")
+	for k in 7:
+		var seg := pivot(prev, Vector3(0, 0.35, 0) if k > 0 else Vector3.ZERO)
+		part(seg, capsule(0.16 - k * 0.012, 0.45), fur if k % 2 == 0 else mould, Vector3(0, 0.18, 0))
+		tail_segs.append(seg)
+		prev = seg
+	d["tail"] = tail_segs
+	# arms in cardigan sleeves; the right one swings a handbag
+	for side: int in [-1, 1]:
+		var s := "l" if side < 0 else "r"
+		var sh := pivot(body, Vector3(1.15 * side, 3.4, 0), "arm_" + s)
+		part(sh, capsule(0.3, 1.5), cardi, Vector3(0, -0.6, 0))
+		_muscle(sh, 0.28, fur, Vector3(0, -1.4, 0), Vector3.ONE)  # paw
+		for c in 3:
+			part(sh, cylinder(0.0, 0.04, 0.16, 5), white, Vector3((c - 1) * 0.1, -1.68, -0.08), Vector3(0.3, 0, 0))
+		d["arm_" + s] = sh
+		if side > 0:
+			var hb := pivot(sh, Vector3(0, -1.6, 0), "handbag")
+			var handle := TorusMesh.new()
+			handle.inner_radius = 0.2
+			handle.outer_radius = 0.26
+			part(hb, handle, bag, Vector3(0, -0.15, 0), Vector3(0, 0, PI / 2))
+			part(hb, box(Vector3(0.7, 0.5, 0.3)), bag, Vector3(0, -0.6, 0))
+			part(hb, box(Vector3(0.12, 0.1, 0.05)), gold, Vector3(0, -0.45, -0.17))
+	# the head: a big round cat face
+	var head := pivot(body, Vector3(0, 4.4, -0.1), "head")
+	d["head"] = head
+	_muscle(head, 1.0, fur, Vector3.ZERO, Vector3(1.15, 1.0, 1.0))
+	for p: Vector3 in [Vector3(0.6, 0.45, -0.6), Vector3(-0.85, -0.2, -0.45), Vector3(0.2, 0.85, 0.3), Vector3(-0.5, 0.5, 0.65)]:
+		_muscle(head, 0.25, mould, p, Vector3(1.0, 0.8, 0.5))  # mouldy patches
+	for side: int in [-1, 1]:
+		var ear := pivot(head, Vector3(0.65 * side, 0.75, 0.0))
+		ear.rotation.z = -0.35 * side
+		part(ear, cylinder(0.0, 0.38, 0.7, 4), fur, Vector3(0, 0.3, 0))
+		part(ear, cylinder(0.0, 0.25, 0.5, 4), pink, Vector3(0, 0.25, -0.1))
+		# big yellow cat eyes with slit pupils, behind red cat-eye glasses
+		part(head, sphere(0.24), eye, Vector3(0.38 * side, 0.18, -0.82), Vector3.ZERO, Vector3(1.0, 0.85, 0.5))
+		part(head, box(Vector3(0.06, 0.32, 0.05)), black, Vector3(0.38 * side, 0.18, -0.95))
+		var ring := TorusMesh.new()
+		ring.inner_radius = 0.24
+		ring.outer_radius = 0.3
+		part(head, ring, frames, Vector3(0.38 * side, 0.18, -0.95), Vector3(PI / 2, 0, 0), Vector3(1.1, 1.0, 0.9))
+		part(head, box(Vector3(0.3, 0.07, 0.06)), frames, Vector3(0.68 * side, 0.36, -0.88), Vector3(0, 0, 0.5 * side))  # the pointy wings
+		# muzzle and whiskers
+		_muscle(head, 0.22, white, Vector3(0.15 * side, -0.3, -0.85), Vector3(1.0, 0.8, 0.6))
+		for k in 3:
+			part(head, cylinder(0.012, 0.012, 0.9, 4), black, Vector3(0.6 * side, -0.25 + k * 0.08, -0.85),
+				Vector3(0, 0, PI / 2 + (k - 1) * 0.15 * side))
+	part(head, box(Vector3(0.1, 0.04, 0.04)), frames, Vector3(0, 0.2, -0.98))  # bridge of the glasses
+	_muscle(head, 0.12, pink, Vector3(0, -0.12, -0.98), Vector3(1.2, 0.8, 0.7))  # nose
+	part(head, capsule(0.04, 0.5), black, Vector3(0, -0.55, -0.88), Vector3(0, 0, PI / 2))  # grumpy mouth
+	part(head, cylinder(0.0, 0.05, 0.14, 5), white, Vector3(0.12, -0.62, -0.88), Vector3(PI, 0, 0))  # a fang
+	# hair in a bun with curlers
+	_muscle(head, 0.5, mat(Color(0.55, 0.45, 0.6), 0.8), Vector3(0, 0.95, 0.25), Vector3(1.0, 0.75, 1.0))
+	for k in 3:
+		part(head, cylinder(0.11, 0.11, 0.3, 10), pink, Vector3(-0.3 + k * 0.3, 1.3, 0.2), Vector3(0, 0, PI / 2))
+	# stink wisps rising off her, and flies buzzing round her head
+	var wisps: Array[Node3D] = []
+	for k in 8:
+		var w := part(body, sphere(0.5 + (k % 3) * 0.2, 10), stink_material(0.22), Vector3.ZERO)
+		wisps.append(w)
+	d["wisps"] = wisps
+	var flies: Array[Node3D] = []
+	for k in 6:
+		var f := fly()
+		body.add_child(f)
+		flies.append(f)
+	d["flies"] = flies
+	# the stink zone on the ground round her
+	var zone := MeshInstance3D.new()
+	zone.mesh = cylinder(1.0, 1.0, 0.04, 32)
+	zone.material_override = stink_material(0.18)
+	zone.position.y = 0.06
+	root.add_child(zone)
+	d["zone"] = zone
+	return d
+
+
+static func animate_cattoon(d: Dictionary, t: float, angry: bool, puff: float, aura_r: float) -> void:
+	var body: Node3D = d["body"]
+	body.position.y = abs(sin(t * 2.2)) * 0.12
+	body.scale = Vector3.ONE * (1.0 + puff * 0.18)
+	(d["head"] as Node3D).rotation.z = sin(t * 1.3) * 0.08
+	var tail: Array = d["tail"]
+	for i in tail.size():
+		(tail[i] as Node3D).rotation = Vector3(0.25 + 0.1 * i * 0.3, 0, sin(t * (3.0 if angry else 1.8) - i * 0.6) * 0.25)
+	var wisps: Array = d["wisps"]
+	for i in wisps.size():
+		var ph := fmod(t * 0.35 + i / float(wisps.size()), 1.0)
+		var a := i * 2.3 + t * 0.4
+		var r := 1.8 + ph * 2.5
+		var w := wisps[i] as Node3D
+		w.position = Vector3(cos(a) * r, 1.0 + ph * 6.0, sin(a) * r)
+		w.scale = Vector3.ONE * (0.6 + ph * 1.2) * (1.4 if angry else 1.0)
+	var flies: Array = d["flies"]
+	for i in flies.size():
+		var a := t * (4.0 + i * 0.7) + i
+		(flies[i] as Node3D).position = Vector3(cos(a) * (1.6 + 0.3 * sin(t * 3 + i)), 4.6 + sin(a * 1.7) * 0.6,
+			sin(a) * (1.6 + 0.3 * cos(t * 2 + i)) - 0.1)
+	var zone: Node3D = d["zone"]
+	zone.scale = Vector3(aura_r, 1.0, aura_r)
+
+
 static func web_cocoon(r: float, h: float) -> Node3D:
 	## A white web wrapping round a stuck enemy.
 	var n := Node3D.new()
