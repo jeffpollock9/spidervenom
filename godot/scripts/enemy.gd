@@ -21,6 +21,9 @@ var face_yaw := 0.0
 var rng := RandomNumberGenerator.new()
 var stun_t := 0.0          # webbed up by Spider-Man: can't move or shoot
 var cocoon: Node3D
+var hacked_t := 0.0        # hacked by the Hacker: fights on your side until its battery runs out
+var hack_fx: Node3D
+var attack_cd := 0.0
 
 
 func _init(g, k: String) -> void:
@@ -81,6 +84,76 @@ func web(secs: float) -> void:
 	cocoon.visible = true
 
 
+func hackable() -> bool:
+	return kind != "minipoo"  # you can't hack a poo
+
+
+func hack(secs: float) -> void:
+	if dead or not hackable():
+		return
+	hacked_t = secs
+	stun_t = 0.0
+	if cocoon:
+		cocoon.visible = false
+	if hack_fx == null:
+		hack_fx = Node3D.new()
+		var ring := TorusMesh.new()
+		ring.inner_radius = 0.32
+		ring.outer_radius = 0.42
+		Models.part(hack_fx, ring, Models.mat(Color(0.2, 1.0, 0.4), 0.2, 0.0, 4.0))
+		var tag := Label3D.new()
+		tag.text = "HACKED"
+		tag.font_size = 48
+		tag.outline_size = 10
+		tag.modulate = Color(0.3, 1.0, 0.5)
+		tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		tag.pixel_size = 0.008
+		tag.position.y = 0.45
+		hack_fx.add_child(tag)
+		hack_fx.position.y = height + 0.5
+		add_child(hack_fx)
+	hack_fx.visible = true
+	game.popup(center() + Vector3.UP * 1.6, "HACKED!", Color(0.3, 1.0, 0.5))
+
+
+func _hacked_ai(dt: float, h: Vector2) -> Vector2:
+	## Fight for the player: go for the nearest robot (or Mr Poo); with nothing to fight,
+	## tag along behind the player.
+	attack_cd = max(0.0, attack_cd - dt)
+	hack_fx.rotation.y += dt * 3.0
+	var foe = null
+	var best := 30.0
+	for e in game.targets():
+		var dd: float = e.global_position.distance_to(global_position)
+		if dd < best:
+			best = dd
+			foe = e
+	var goal: Vector3 = foe.global_position if foe != null else game.player.global_position
+	var to := goal - global_position
+	var flat := Vector3(to.x, 0, to.z)
+	if flat.length() > 0.1:
+		dir = flat.normalized()
+	if foe == null:
+		var spd := 5.0 if flat.length() > 4.0 else 0.0
+		return h.move_toward(Vector2(dir.x, dir.z) * spd, 30.0 * dt)
+	var reach: float = radius + foe.radius + 0.6
+	if kind == "shooter":
+		if attack_cd <= 0.0:
+			attack_cd = 1.0
+			var from := center() + dir * 0.7
+			var aimv: Vector3 = (foe.center() - from).normalized()
+			game.spawn_projectile(from, aimv * 22.0, "player", "hackbolt", 12.0, 0.3, {"life": 2.0})
+			game.audio.play("shoot")
+		return h.move_toward(Vector2.ZERO, 20.0 * dt)
+	if flat.length() > reach:
+		return h.move_toward(Vector2(dir.x, dir.z) * 6.0, 30.0 * dt)
+	if attack_cd <= 0.0:  # biff
+		attack_cd = 0.7
+		foe.hurt(14.0, dir, 6.0)
+		game.audio.play("hit")
+	return h.move_toward(Vector2.ZERO, 30.0 * dt)
+
+
 func die() -> void:
 	dead = true
 	game.burst(center(), Color(1.0, 0.85, 0.4), 18, 8.0)
@@ -98,7 +171,15 @@ func tick(dt: float) -> void:
 	var can_see: bool = not player.dead and not player.hiding
 	var h := Vector2(velocity.x, velocity.z)
 	var k := kind
-	if stun_t > 0.0:
+	if hacked_t > 0.0:
+		hacked_t -= dt
+		k = "hacked"
+		h = _hacked_ai(dt, h)
+		if hacked_t <= 0.0:  # battery's flat: it shuts down and blows up
+			game.popup(center() + Vector3.UP * 1.6, "SHUT DOWN", Color(0.6, 0.6, 0.6))
+			die()
+			return
+	elif stun_t > 0.0:
 		stun_t -= dt
 		k = "stuck"
 		h = h.move_toward(Vector2.ZERO, 30.0 * dt)

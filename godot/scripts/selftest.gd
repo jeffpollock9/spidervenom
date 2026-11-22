@@ -78,6 +78,10 @@ func run() -> void:
 		await spiderman_tests()
 		_finish(t0)
 		return
+	if OS.get_cmdline_user_args().has("--hacker-only"):
+		await hacker_tests()
+		_finish(t0)
+		return
 	if OS.get_cmdline_user_args().has("--charley-only"):
 		await charley_tests()
 		_finish(t0)
@@ -325,6 +329,7 @@ func run() -> void:
 	await dad_tests()
 	await jamie_tests()
 	await charley_tests()
+	await hacker_tests()
 	_finish(t0)
 
 
@@ -350,18 +355,19 @@ func spiderman_tests() -> void:
 	check(game.state == "select" and game.hero_id == "spiderman" and game.player is Spiderman,
 		"hero select picks Spider-Man (%s)" % game.hero_id)
 	await shot("select")
-	game.choose_hero(1)
-	check(game.player is JamiesDad, "hero select picks Jamie's Dad")
-	game.choose_hero(1)
-	check(game.player is Jamie, "hero select picks Jamie")
-	game.choose_hero(1)
-	check(game.player is Charley, "hero select picks Charley")
-	game.choose_hero(1)
-	check(game.player is Venom, "hero select wraps round to Venom")
+	var classes := {"venom": Venom, "spiderman": Spiderman, "jamiesdad": JamiesDad, "jamie": Jamie,
+		"charley": Charley, "hacker": Hacker}
+	var n: int = game.HEROES.size()
+	var right := true
+	for i in range(2, n + 1):  # step through all of them and round to Venom again
+		game.choose_hero(1)
+		var want: String = game.HEROES[i % n]
+		right = right and game.hero_id == want and is_instance_of(game.player, classes[want])
+	check(right and game.player is Venom, "hero select steps through all %d heroes and wraps round" % n)
 	game.choose_hero(-1)
-	check(game.player is Charley, "hero select wraps backwards to Charley")
-	game.choose_hero(-3)
-	check(game.player is Spiderman, "hero select goes backwards too")
+	check(game.hero_id == game.HEROES[n - 1], "hero select wraps backwards")
+	game.choose_hero(2)
+	check(game.player is Spiderman, "hero select goes back to Spider-Man")
 	game.start_play()
 
 	# --- quicker than Venom, and a somersault for a second jump
@@ -995,3 +1001,163 @@ func charley_tests() -> void:
 	cur = Controls.new()
 	await frames(220)
 	check(game.finished == "won", "Charley saves Supercity (%s)" % game.finished)
+
+
+func hacker_tests() -> void:
+	print("  --- Hacker")
+	game.state = "title"
+	game.hero_id = "hacker"
+	game.new_game()
+	game.open_select()
+	await frames(40)
+	await shot("hacker_select")
+	game.start_play()
+
+	# --- hack a robot: it turns on its mate
+	var p := await fresh()
+	clear_enemies()
+	check(p is Hacker, "playing as the Hacker")
+	var pet: Enemy = game.spawn_enemy("walker", p.global_position + Vector3(9, 0.3, 0))
+	var other: Enemy = game.spawn_enemy("walker", p.global_position + Vector3(16, 0.3, 3))
+	await frames(3)
+	cur.aim_override = pet.center()
+	cur.special_pressed = true
+	await frames(3)
+	check(pet.hacked_t > 0.0 and not game.targets().has(pet), "RIGHT CLICK hacks the robot he points at")
+	cur = Controls.new()
+	var beaten := false
+	for i in 60 * 8:
+		await frames(1)
+		p.hp = p.max_hp
+		if i == 50:
+			await shot("hacker_pet")
+		if not is_instance_valid(other) or other.dead:
+			beaten = true
+			break
+	check(beaten, "the hacked robot batters the other robot")
+	check(is_instance_valid(pet) and not pet.dead, "and the hacked robot is still going")
+	# it can't be hurt by the Hacker
+	var php := pet.hp
+	cur.aim_override = pet.center()
+	game.rig.face_dir((pet.global_position - p.global_position).normalized())
+	cur.primary_pressed = true
+	await frames(3)
+	check(not is_instance_valid(pet) or pet.hp == php, "zapping doesn't hurt your own hacked robot")
+	cur = Controls.new()
+	# battery runs out
+	if is_instance_valid(pet):
+		pet.hacked_t = 0.05
+	await frames(10)
+	check(not is_instance_valid(pet) or pet.dead, "when its battery runs out it shuts down")
+
+	# --- a hacked shooter shoots robots
+	p = await fresh()
+	clear_enemies()
+	var gun: Enemy = game.spawn_enemy("shooter", p.global_position + Vector3(10, 0.3, 0))
+	var mark: Enemy = game.spawn_enemy("walker", p.global_position + Vector3(22, 0.3, 0))
+	await frames(3)
+	gun.hack(10.0)
+	var hit := false
+	for i in 60 * 4:
+		await frames(1)
+		p.hp = p.max_hp
+		if not is_instance_valid(mark) or mark.hp < mark.max_hp:
+			hit = true
+			break
+	check(hit, "a hacked shooter shoots the other robots")
+
+	# --- zap chains to a second robot
+	p = await fresh()
+	clear_enemies()
+	var a: Enemy = game.spawn_enemy("walker", p.global_position + Vector3(3.5, 0.3, 0))
+	var b: Enemy = game.spawn_enemy("walker", p.global_position + Vector3(7.5, 0.3, 1.5))
+	await frames(3)
+	cur.aim_override = a.center()
+	cur.primary_pressed = true
+	await frames(3)
+	await shot("hacker_zap")
+	check(is_instance_valid(a) and a.hp < a.max_hp and is_instance_valid(b) and b.hp < b.max_hp,
+		"LEFT CLICK zap jumps to a second robot")
+	cur = Controls.new()
+
+	# --- can't hack Mr Poo or the mini-poos
+	clear_enemies()
+	var poo: Enemy = game.spawn_enemy("minipoo", p.global_position + Vector3(6, 0.3, 0))
+	await frames(3)
+	p.energy = 100.0
+	cur.aim_override = poo.center()
+	cur.special_pressed = true
+	await frames(3)
+	check(is_instance_valid(poo) and poo.hacked_t <= 0.0, "you can't hack a poo")
+	cur = Controls.new()
+
+	# --- glitch forward
+	p = await fresh()
+	clear_enemies()
+	var x0 := p.global_position.x
+	game.rig.face_dir(Vector3.RIGHT)
+	cur.move = Vector2(0, 1)
+	cur.alt_pressed = true
+	await frames(1)
+	cur.alt_pressed = false
+	check(p.global_position.x - x0 > 6.0, "SHIFT glitches him forward (%.1f m in one frame)" % (p.global_position.x - x0))
+	cur = Controls.new()
+
+	# --- SYSTEM HACK
+	p = await fresh()
+	clear_enemies()
+	var foes: Array = []
+	for k in 4:
+		foes.append(game.spawn_enemy("walker", p.global_position + Vector3(8 + k * 5, 0.3, -6 + k * 3)))
+	var mini: Enemy = game.spawn_enemy("minipoo", p.global_position + Vector3(9, 0.3, 6))
+	await frames(3)
+	p.energy = 100.0
+	cur.ult_pressed = true
+	await frames(5)
+	await shot("hacker_system")
+	var turned := 0
+	for e in foes:
+		if is_instance_valid(e) and e.hacked_t > 0.0:
+			turned += 1
+	check(turned == 4 and (not is_instance_valid(mini) or mini.dead), "SYSTEM HACK turns every robot and deletes the poo (%d/4)" % turned)
+	cur = Controls.new()
+
+	# --- the Hacker vs Mr Poo (with some hacked robots helping)
+	p = await fresh()
+	clear_enemies()
+	p.global_position = Vector3(275, 0.3, 0)
+	await frames(150)
+	var boss: MrPoo = game.boss
+	for k in 3:
+		var helper: Enemy = game.spawn_enemy("shooter" if k == 0 else "walker", Vector3(278, 0.5, -4 + k * 4))
+		helper.hack(30.0)
+	var hp_start := boss.hp
+	var damage := 0.0
+	var denied := false
+	for f in 60 * 12:
+		if not is_instance_valid(boss) or boss.dead:
+			break
+		p.hp = p.max_hp
+		cur.aim_override = boss.center()
+		var to := boss.global_position - p.global_position
+		game.rig.face_dir(Vector3(to.x, 0, to.z).normalized())
+		var close := Vector2(to.x, to.z).length() < p.punch_reach + boss.radius
+		cur.move = Vector2(0, 1) if not close else Vector2.ZERO
+		cur.primary_pressed = close and p.cd <= 0.0
+		if f == 30:
+			cur.special_pressed = true
+			p.energy = 100.0
+		await frames(1)
+		if f == 31:
+			denied = boss.hp < hp_start
+		if is_instance_valid(boss):
+			damage = hp_start - boss.hp
+		if f == 200:
+			await shot("hacker_boss")
+	check(denied, "trying to hack Mr Poo: ACCESS DENIED")
+	check(damage > 150.0, "the Hacker and his robots beat up Mr Poo (%.0f damage)" % damage)
+	if is_instance_valid(boss) and not boss.dead:
+		boss.hurt(1e6, Vector3.ZERO)
+	cur = Controls.new()
+	await frames(220)
+	check(game.finished == "won", "the Hacker saves Supercity (%s)" % game.finished)

@@ -774,6 +774,101 @@ static func charley() -> Dictionary:
 	return d
 
 
+# --------------------------------------------------------------------------- The Hacker
+
+const HACKER_SIZE := 0.68  # same skeleton, ~1.85 m
+const HACK_GREEN := Color(0.2, 1.0, 0.4)
+
+
+static func hacker() -> Dictionary:
+	var root := Node3D.new()
+	root.name = "HackerModel"
+	root.scale = Vector3.ONE * HACKER_SIZE
+	var skin := mat(Color(0.86, 0.66, 0.52), 0.6)
+	var hoodie := mat(Color(0.07, 0.07, 0.09), 0.85, 0.0, 0.0, 0.3)
+	var trim := mat(Color(0.12, 0.12, 0.15), 0.85)
+	var pants := mat(Color(0.2, 0.21, 0.23), 0.9)
+	var shoe := mat(Color(0.05, 0.05, 0.06), 0.5)
+	var glow := mat(HACK_GREEN, 0.2, 0.0, 3.5)
+	var metal := mat(Color(0.55, 0.57, 0.6), 0.3, 0.8)
+	var d := {"root": root}
+
+	# legs: cargo trousers with pockets, black trainers with green soles
+	for side: int in [-1, 1]:
+		var s := "l" if side < 0 else "r"
+		var hip := pivot(root, Vector3(0.2 * side, 1.08, 0.0), "leg_" + s)
+		_muscle(hip, 0.18, pants, Vector3(0, -0.06, 0), Vector3.ONE)
+		part(hip, capsule(0.16, 0.66), pants, Vector3(0, -0.28, 0))
+		part(hip, box(Vector3(0.08, 0.16, 0.2)), trim, Vector3(0.16 * side, -0.32, 0))  # cargo pocket
+		var knee := pivot(hip, Vector3(0, -0.56, 0), "shin_" + s)
+		part(knee, capsule(0.13, 0.56), pants, Vector3(0, -0.22, 0))
+		var ankle := pivot(knee, Vector3(0, -0.5, 0), "foot_" + s)
+		_muscle(ankle, 0.12, shoe, Vector3(0, -0.0, -0.08), Vector3(1.0, 0.7, 1.9))
+		part(ankle, box(Vector3(0.22, 0.04, 0.46)), glow, Vector3(0, -0.075, -0.08))
+		d["leg_" + s] = hip
+		d["shin_" + s] = knee
+
+	# torso: a black hoodie with a glowing green circuit pattern
+	var torso := pivot(root, Vector3(0, 1.0, 0), "torso")
+	d["torso"] = torso
+	_muscle(torso, 0.25, pants, Vector3(0, 0.06, 0.0), Vector3(1.1, 0.6, 0.85))
+	part(torso, capsule(0.28, 0.82), hoodie, Vector3(0, 0.4, 0.02), Vector3.ZERO, Vector3(1.05, 1.0, 0.8))
+	var chest := pivot(torso, Vector3(0, 0.8, 0), "chest")
+	d["chest"] = chest
+	_muscle(chest, 0.38, hoodie, Vector3(0, 0.0, 0.03), Vector3(1.1, 0.8, 0.75))
+	# circuit lines and a green skull-and-keyboard... well, a glowing chip
+	part(chest, box(Vector3(0.14, 0.14, 0.02)), glow, Vector3(0, 0.02, -0.28))
+	part(chest, box(Vector3(0.09, 0.09, 0.025)), trim, Vector3(0, 0.02, -0.285))
+	for k in 4:
+		part(chest, box(Vector3(0.012, 0.012, 0.1 + k * 0.03)), glow,
+			Vector3(-0.1 + k * 0.065, -0.08 - k * 0.02, -0.27), Vector3(PI / 2, 0, 0))
+		part(chest, box(Vector3(0.18, 0.012, 0.012)), glow, Vector3(0.12 * (1 if k % 2 else -1), 0.12 - k * 0.07, -0.26))
+	# backpack with an antenna
+	part(chest, box(Vector3(0.34, 0.4, 0.15)), trim, Vector3(0, -0.05, 0.3))
+	part(chest, cylinder(0.008, 0.012, 0.5, 6), metal, Vector3(0.13, 0.35, 0.33))
+	_muscle(chest, 0.025, glow, Vector3(0.13, 0.6, 0.33), Vector3.ONE)
+
+	# arms: hoodie sleeves; a glowing laptop in his left hand
+	for side: int in [-1, 1]:
+		var s := "l" if side < 0 else "r"
+		var sh := pivot(chest, Vector3(0.46 * side, 0.16, 0.02), "arm_" + s)
+		_muscle(sh, 0.16, hoodie, Vector3(0.02 * side, 0.0, 0), Vector3.ONE)
+		part(sh, capsule(0.12, 0.6), hoodie, Vector3(0, -0.3, 0))
+		var elbow := pivot(sh, Vector3(0, -0.58, 0), "fore_" + s)
+		part(elbow, capsule(0.11, 0.5), hoodie, Vector3(0, -0.2, 0))
+		var wrist := pivot(elbow, Vector3(0, -0.5, 0), "hand_" + s)
+		_muscle(wrist, 0.09, skin, Vector3(0, -0.04, 0), Vector3(1.0, 1.1, 0.8))
+		if side < 0:  # the laptop, open, held flat like a tray
+			var laptop := pivot(wrist, Vector3(0, -0.1, -0.12), "laptop")
+			part(laptop, box(Vector3(0.36, 0.02, 0.25)), metal)
+			part(laptop, box(Vector3(0.3, 0.005, 0.18)), trim, Vector3(0, 0.012, 0.01))  # keyboard
+			var lid := pivot(laptop, Vector3(0, 0.0, 0.125))
+			lid.rotation.x = -1.9
+			part(lid, box(Vector3(0.36, 0.02, 0.25)), metal, Vector3(0, 0, -0.125))
+			for face in [-1.0, 1.0]:  # glowing screen (on both sides, so you can always see it)
+				part(lid, box(Vector3(0.32, 0.005, 0.21)), glow, Vector3(0, 0.012 * face, -0.125))
+		d["arm_" + s] = sh
+		d["fore_" + s] = elbow
+
+	# head: hood up, glowing green visor, headset with a mic
+	var head := pivot(chest, Vector3(0, 0.55, -0.04), "head")
+	head.scale = Vector3.ONE * 1.15
+	d["head"] = head
+	_muscle(head, 0.2, skin, Vector3(0, 0.02, 0), Vector3(0.95, 1.1, 1.0))
+	_muscle(head, 0.25, hoodie, Vector3(0, 0.06, 0.07), Vector3(1.05, 1.1, 1.0))  # the hood
+	part(head, cylinder(0.2, 0.2, 0.05, 18), trim, Vector3(0, 0.04, -0.13), Vector3(PI / 2, 0, 0), Vector3(1.05, 1.0, 1.25))  # hood rim
+	part(head, box(Vector3(0.3, 0.07, 0.06)), glow, Vector3(0, 0.06, -0.18))  # visor
+	part(head, box(Vector3(0.32, 0.09, 0.05)), trim, Vector3(0, 0.06, -0.165))
+	_muscle(head, 0.03, skin, Vector3(0, -0.02, -0.2), Vector3(0.8, 1.0, 0.9))  # nose
+	part(head, box(Vector3(0.08, 0.012, 0.02)), mat(Color(0.5, 0.25, 0.25), 0.5), Vector3(0.015, -0.1, -0.185),
+		Vector3(0, 0, -0.15))  # a sly smirk
+	for side: int in [-1, 1]:
+		part(head, cylinder(0.06, 0.06, 0.04, 12), trim, Vector3(0.2 * side, 0.02, -0.02), Vector3(0, 0, PI / 2))
+	part(head, cylinder(0.01, 0.01, 0.2, 6), trim, Vector3(-0.17, -0.07, -0.11), Vector3(0.9, 0.6, 0))  # mic arm
+	_muscle(head, 0.02, glow, Vector3(-0.1, -0.12, -0.18), Vector3.ONE)
+	return d
+
+
 static func web_cocoon(r: float, h: float) -> Node3D:
 	## A white web wrapping round a stuck enemy.
 	var n := Node3D.new()

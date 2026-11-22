@@ -33,7 +33,8 @@ var can_pound := false             # CTRL in mid-air slams down
 var regen := 0.0
 var invincible := false            # nothing can hurt him
 var can_jetpack := false           # SHIFT (hold) is a jetpack
-var can_hide := false              # SHIFT (hold) hides: robots stop bothering with him                   # health per second, once he's gone a while without a hit
+var can_hide := false              # SHIFT (hold) hides: robots stop bothering with him
+var custom_shift := false          # the hero handles SHIFT himself (in _pre_tick)                   # health per second, once he's gone a while without a hit
 var ult_ready_text := "F: ULTIMATE READY!"
 var hint := ""
 var rope_radius := 0.12
@@ -175,7 +176,9 @@ func tick(ctl: Controls, dt: float) -> void:
 		wish = wish.normalized()
 
 	# SHIFT: each hero uses it for one thing
-	if can_hide:
+	if custom_shift:
+		pass
+	elif can_hide:
 		hiding = ctl.alt_held and is_on_floor() and not dead
 		if hiding:
 			wish = Vector3.ZERO

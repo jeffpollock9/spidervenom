@@ -55,6 +55,9 @@ func setup(g, pos: Vector3, v: Vector3, side: String, k: String, dmg: float, r: 
 			Models.part(self, Models.sphere(r * 0.7, 8), white, Vector3(0, -r * 0.6, -r * 1.2))
 			Models.part(self, Models.box(Vector3(r * 1.3, r * 0.3, r * 0.4)), Models.mat(Color(0.85, 0.2, 0.2), 0.8),
 				Vector3(0, 0, r * 1.3))
+		"hackbolt":
+			Models.part(self, Models.capsule(r * 0.6, r * 4.0), Models.mat(Color(0.2, 1.0, 0.4), 0.3, 0.0, 3.0),
+				Vector3.ZERO, Vector3(PI / 2, 0, 0))
 		"smart":
 			Models.part(self, Models.sphere(r, 12), Models.mat(Color(0.3, 1.0, 0.7), 0.2, 0.0, 4.0))
 			var ring := TorusMesh.new()

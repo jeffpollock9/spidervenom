@@ -1,12 +1,12 @@
 extends Node3D
-## SpiderVenomn 3D: pick a hero (Venom, Spider-Man, Jamie's Dad, Jamie or Charley) and save
-## Supercity from Mr Poo.
+## SpiderVenomn 3D: pick a hero (Venom, Spider-Man, Jamie's Dad, Jamie, Charley or the Hacker)
+## and save Supercity from Mr Poo.
 ## Owns the level, the hero, enemies, projectiles and effects, and runs the game states.
 
 var audio: GameAudio
 var level: LevelSupercity
 var world: Node3D
-const HEROES := ["venom", "spiderman", "jamiesdad", "jamie", "charley"]
+const HEROES := ["venom", "spiderman", "jamiesdad", "jamie", "charley", "hacker"]
 
 var player: Hero
 var hero_id := "venom"
@@ -103,6 +103,8 @@ static func make_hero(id: String, g) -> Hero:
 			return Jamie.new(g)
 		"charley":
 			return Charley.new(g)
+		"hacker":
+			return Hacker.new(g)
 	return Venom.new(g)
 
 
@@ -184,7 +186,7 @@ func spawn_projectile(pos: Vector3, v: Vector3, side: String, kind: String, dmg:
 func targets() -> Array:
 	var out: Array = []
 	for e in enemies:
-		if is_instance_valid(e) and not e.dead:
+		if is_instance_valid(e) and not e.dead and e.hacked_t <= 0.0:  # hacked robots are on your side
 			out.append(e)
 	if boss and boss.active and not boss.dead:
 		out.append(boss)
@@ -391,6 +393,56 @@ func genius_hack(at: Vector3) -> void:
 	audio.play("explode")
 	shake(0.8)
 	banner("GENIUS HACK!", 1.3)
+
+
+func system_hack(at: Vector3) -> void:
+	## The Hacker's ultimate: every robot nearby is hacked onto your side at once, the
+	## mini-poos get deleted, and Mr Poo crashes.
+	for e in enemies.duplicate():
+		if not is_instance_valid(e) or e.dead or e.center().distance_to(at) >= 45.0:
+			continue
+		if e.hackable():
+			e.hack(15.0)
+		else:
+			popup(e.center() + Vector3.UP * 1.5, "DELETED", Color(0.3, 1.0, 0.5))
+			e.hurt(e.hp, Vector3.ZERO, 0.0)
+	if boss and boss.active and not boss.dead and boss.center().distance_to(at) < 45.0:
+		popup(boss.center() + Vector3.UP * 4.5, "MR_POO.EXE HAS STOPPED WORKING", Color(1, 0.4, 0.4))
+		boss.hurt(boss.max_hp * 0.15, Vector3.ZERO)
+		if not boss.dead:
+			boss.daze(4.0)
+	for k in 2:
+		ground_wave_fx(at + Vector3.UP * (0.4 + k), Models.HACK_GREEN, 45.0, 50.0 + k * 10.0)
+	burst(at, Models.HACK_GREEN, 50, 14.0)
+	audio.play("hack")
+	audio.play("glitch")
+	shake(0.6)
+	banner("SYSTEM HACKED!", 1.4)
+
+
+func beam(a: Vector3, b: Vector3, colour: Color) -> void:
+	## A quick zig-zag line of electricity from a to b.
+	var n := Node3D.new()
+	n.position = a  # the fx loop shrinks it towards here as it fades
+	world.add_child(n)
+	var m := Models.mat(colour, 0.2, 0.0, 4.0)
+	var steps := 6
+	var prev := a
+	var side := (b - a).cross(Vector3.UP).normalized()
+	if side.length() < 0.1:
+		side = Vector3.RIGHT
+	for i in steps:
+		var f := float(i + 1) / steps
+		var p := a.lerp(b, f)
+		if i < steps - 1:
+			p += side * randf_range(-0.35, 0.35) + Vector3.UP * randf_range(-0.3, 0.3)
+		var seg := Models.part(n, Models.cylinder(0.04, 0.04, 1.0, 5), m)
+		var dir := p - prev
+		seg.position = (prev + p) * 0.5 - a
+		if dir.length() > 0.01:
+			seg.basis = Basis(Quaternion(Vector3.UP, dir.normalized())) * Basis.from_scale(Vector3(1, dir.length(), 1))
+		prev = p
+	particles.append({"node": n, "vel": Vector3.ZERO, "life": 0.18, "max": 0.18})
 
 
 func streak(pos: Vector3, dir: Vector3) -> void:
@@ -643,7 +695,7 @@ func _update_pickups(dt: float) -> void:
 func _update_fx(dt: float) -> void:
 	for p in particles.duplicate():
 		p["life"] -= dt
-		var n: MeshInstance3D = p["node"]
+		var n: Node3D = p["node"]
 		if p["life"] <= 0.0:
 			n.queue_free()
 			particles.erase(p)
