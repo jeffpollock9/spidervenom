@@ -1,0 +1,466 @@
+extends Node3D
+## SpiderVenomn 3D: Venom vs Mr Poo in Supercity.
+## Owns the level, the hero, enemies, projectiles and effects, and runs the game states.
+
+var audio: GameAudio
+var level: LevelSupercity
+var world: Node3D
+var player: Venom
+var rig: CameraRig
+var hud: Hud
+var boss: MrPoo
+var enemies: Array = []
+var projectiles: Array = []
+var puddles: Array = []     # {node, pos, radius, life}
+var waves: Array = []       # expanding ground shockwaves from an angry Mr Poo
+var pickups: Array = []     # {node, kind, pos}
+var particles: Array = []
+var popups: Array = []
+var state := "title"        # title | play | paused | won | lost
+var state_t := 0.0
+var finished := ""
+var gate_closed := false
+var intro_t := 0.0
+var score := 0
+var t := 0.0
+var banner_text := ""
+var banner_t := 0.0
+var bot = null              # the selftest drives the hero when set
+var headless := false
+
+
+func _ready() -> void:
+	Controls.setup_input_map()
+	var args := OS.get_cmdline_user_args()
+	headless = DisplayServer.get_name() == "headless"
+	audio = GameAudio.new(not headless and not args.has("--mute"))
+	add_child(audio)
+	var hud_layer := CanvasLayer.new()
+	add_child(hud_layer)
+	hud = Hud.new()
+	hud.game = self
+	hud_layer.add_child(hud)
+	new_game()
+	if args.has("--selftest"):
+		var st: Node = load("res://scripts/selftest.gd").new()
+		st.game = self
+		add_child(st)
+	else:
+		audio.prepare(["supercity", "boss"])
+		audio.music("menu")
+
+
+func new_game() -> void:
+	if world:
+		world.queue_free()
+	enemies.clear()
+	projectiles.clear()
+	puddles.clear()
+	waves.clear()
+	pickups.clear()
+	particles.clear()
+	popups.clear()
+	world = Node3D.new()
+	add_child(world)
+	level = LevelSupercity.new()
+	world.add_child(level)
+	player = Venom.new(self)
+	player.position = level.start
+	world.add_child(player)
+	rig = CameraRig.new()
+	world.add_child(rig)
+	rig.target = player
+	rig.exclude(player)
+	player.rig = rig
+	for s in level.spawns:
+		spawn_enemy(s[0], s[1])
+	for p in level.pickups:
+		_add_pickup(p[0], p[1])
+	boss = MrPoo.new(self)
+	boss.position = level.boss_pos
+	world.add_child(boss)
+	rig.follow(0.0, true)
+	gate_closed = false
+	finished = ""
+	score = 0
+	t = 0.0
+	state_t = 0.0
+	if state != "title":
+		start_play()
+
+
+func start_play() -> void:
+	state = "play"
+	banner("SUPERCITY", 2.2)
+	audio.music("supercity")
+	if not headless and bot == null:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+# ------------------------------------------------------------------ spawning and helpers
+
+func spawn_enemy(kind: String, pos: Vector3) -> Enemy:
+	var e := Enemy.new(self, kind)
+	e.position = pos
+	e.dir = Vector3.LEFT if kind != "shooter" else Vector3.LEFT
+	world.add_child(e)
+	enemies.append(e)
+	return e
+
+
+func spawn_projectile(pos: Vector3, v: Vector3, side: String, kind: String, dmg: float, r: float,
+		opts := {}) -> Projectile:
+	var p := Projectile.new()
+	world.add_child(p)
+	p.setup(self, pos, v, side, kind, dmg, r, opts)
+	projectiles.append(p)
+	return p
+
+
+func targets() -> Array:
+	var out: Array = []
+	for e in enemies:
+		if is_instance_valid(e) and not e.dead:
+			out.append(e)
+	if boss and boss.active and not boss.dead:
+		out.append(boss)
+	return out
+
+
+func _add_pickup(kind: String, pos: Vector3) -> void:
+	var n := Node3D.new()
+	n.position = pos
+	var colour := Color(0.95, 0.15, 0.2) if kind == "health" else Color(0.3, 0.75, 1.0)
+	Models.part(n, Models.sphere(0.5), Models.mat(Color(1, 1, 1, 1), 0.2, 0.0, 0.5))
+	if kind == "health":
+		var red := Models.mat(colour, 0.3, 0.0, 1.5)
+		Models.part(n, Models.box(Vector3(0.22, 0.7, 0.3)), red)
+		Models.part(n, Models.box(Vector3(0.7, 0.22, 0.3)), red)
+	else:
+		var blue := Models.mat(colour, 0.3, 0.0, 2.0)
+		Models.part(n, Models.box(Vector3(0.18, 0.5, 0.3)), blue, Vector3(0.08, 0.18, 0), Vector3(0, 0, -0.5))
+		Models.part(n, Models.box(Vector3(0.18, 0.5, 0.3)), blue, Vector3(-0.08, -0.18, 0), Vector3(0, 0, -0.5))
+	world.add_child(n)
+	pickups.append({"node": n, "kind": kind, "pos": pos})
+
+
+func add_puddle(pos: Vector3) -> void:
+	var q := PhysicsRayQueryParameters3D.create(pos + Vector3.UP, pos + Vector3.DOWN * 3.0, 1)
+	var hit := get_world_3d().direct_space_state.intersect_ray(q)
+	if not hit:
+		return
+	var p: Vector3 = hit.position
+	var n := Node3D.new()
+	n.position = p + Vector3.UP * 0.03
+	Models.part(n, Models.cylinder(2.2, 2.2, 0.06, 20), Models.mat(Color(0.4, 0.25, 0.1), 0.15))
+	Models.part(n, Models.cylinder(1.3, 1.3, 0.08, 16), Models.mat(Color(0.55, 0.36, 0.17), 0.1), Vector3(0.3, 0.01, -0.2))
+	world.add_child(n)
+	puddles.append({"node": n, "pos": p, "radius": 2.2, "life": 6.0})
+
+
+func in_puddle(body: Node3D) -> bool:
+	for p in puddles:
+		var d: Vector3 = body.global_position - p["pos"]
+		if Vector2(d.x, d.z).length() < p["radius"] and abs(d.y) < 0.6:
+			return true
+	return false
+
+
+func ground_wave(pos: Vector3, max_r: float, speed: float) -> void:
+	## A ring of muck racing out across the ground. Jump over it!
+	var n := MeshInstance3D.new()
+	var torus := TorusMesh.new()
+	torus.inner_radius = 0.8
+	torus.outer_radius = 1.0
+	n.mesh = torus
+	n.material_override = Models.mat(Color(0.5, 0.32, 0.12), 0.4, 0.0, 0.3)
+	n.position = pos + Vector3.UP * 0.2
+	world.add_child(n)
+	waves.append({"node": n, "pos": pos, "r": 1.0, "max": max_r, "speed": speed, "hit": false})
+
+
+func burst(pos: Vector3, colour: Color, n: int, speed := 6.0) -> void:
+	if particles.size() > 300:
+		return
+	var m := Models.mat(colour, 0.5)
+	for i in n:
+		var mi := MeshInstance3D.new()
+		mi.mesh = Models.box(Vector3.ONE * 0.16)
+		mi.material_override = m
+		mi.position = pos
+		world.add_child(mi)
+		var v := Vector3(randf_range(-1, 1), randf_range(-0.2, 1.2), randf_range(-1, 1)).normalized() * randf_range(0.3, 1.0) * speed
+		var life := randf_range(0.35, 0.8)
+		particles.append({"node": mi, "vel": v, "life": life, "max": life})
+
+
+func popup(pos: Vector3, text: String, colour: Color) -> void:
+	var l := Label3D.new()
+	l.text = text
+	l.font_size = 72
+	l.outline_size = 14
+	l.modulate = colour
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	l.no_depth_test = true
+	l.pixel_size = 0.008
+	l.position = pos
+	world.add_child(l)
+	popups.append({"node": l, "life": 0.9})
+
+
+func shake(amount: float) -> void:
+	rig.shake = max(rig.shake, amount)
+
+
+func banner(text: String, secs := 2.0) -> void:
+	banner_text = text
+	banner_t = secs
+
+
+func symbiote_blast(at: Vector3) -> void:
+	## Venom's ultimate: symbiotes explode everywhere, wiping out every robot nearby.
+	for e in targets():
+		if e == boss:
+			continue
+		if e.center().distance_to(at) < 45.0:
+			e.hurt(e.hp, e.center() - at, 14.0)
+	if boss and boss.active and not boss.dead and boss.center().distance_to(at) < 45.0:
+		boss.hurt(boss.max_hp * 0.2, Vector3.ZERO)
+	for i in 24:
+		var a := i * TAU / 24.0
+		var dir := Vector3(cos(a), 0.15 * sin(a * 3.0), sin(a))
+		spawn_projectile(at + dir * 1.5, dir * 30.0, "player", "symbiote", 15.0, 0.45, {"life": 1.0, "pierce": true})
+	burst(at, Color(0.05, 0.05, 0.08), 60, 18.0)
+	ground_wave_fx(at)
+	audio.play("roar")
+	audio.play("explode")
+	shake(1.0)
+	banner("SYMBIOTE BLAST!", 1.2)
+
+
+func ground_wave_fx(at: Vector3) -> void:
+	var n := MeshInstance3D.new()
+	var torus := TorusMesh.new()
+	torus.inner_radius = 0.7
+	torus.outer_radius = 1.0
+	n.mesh = torus
+	n.material_override = Models.mat(Models.VENOM_BLACK, 0.2, 0.3, 0.0, 0.8)
+	n.position = at
+	world.add_child(n)
+	waves.append({"node": n, "pos": at, "r": 1.0, "max": 40.0, "speed": 60.0, "hit": true})
+
+
+func boss_defeated(b: MrPoo) -> void:
+	for i in 6:
+		burst(b.center() + Vector3(randf_range(-2, 2), randf_range(-2, 2), randf_range(-2, 2)), Color(1, 0.8, 0.3), 20, 12.0)
+	b.queue_free()
+	audio.play("explode")
+	audio.play("win")
+	audio.music("")
+	shake(1.0)
+	score += 5000
+	banner("MR POO DEFEATED!", 3.0)
+	state = "won"
+	state_t = 3.2
+	player.invuln = 99.0
+
+
+# ------------------------------------------------------------------ main loop
+
+func _unhandled_input(event: InputEvent) -> void:
+	if bot != null:
+		return
+	if event.is_action_pressed("fullscreen"):
+		var full := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if full else DisplayServer.WINDOW_MODE_FULLSCREEN)
+	elif event.is_action_pressed("music"):
+		audio.toggle_music()
+	match state:
+		"title":
+			if event is InputEventMouseButton and event.pressed or event is InputEventKey and event.pressed \
+					and not event.is_action("pause"):
+				audio.play("select")
+				start_play()
+			elif event.is_action_pressed("pause"):
+				get_tree().quit()
+		"play":
+			if event.is_action_pressed("pause"):
+				state = "paused"
+				Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+			elif event is InputEventMouseButton and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		"paused":
+			if event.is_action_pressed("pause") or event is InputEventMouseButton and event.pressed:
+				state = "play"
+				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+			elif event.is_action_pressed("restart"):
+				state = "play"
+				new_game()
+			elif event is InputEventKey and event.pressed and event.physical_keycode == KEY_Q:
+				get_tree().quit()
+		"won", "lost":
+			if finished != "" and (event.is_action_pressed("jump") or event.is_action_pressed("restart")
+					or event is InputEventKey and event.pressed and event.physical_keycode == KEY_ENTER):
+				state = "play"
+				new_game()
+			elif finished != "" and event.is_action_pressed("pause"):
+				get_tree().quit()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and state == "play" and bot == null:
+		state = "paused"
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+
+func _physics_process(dt: float) -> void:
+	if state == "title" or state == "paused":
+		level.tick_lifts(0.0)
+		return
+	t += dt
+	banner_t = max(0.0, banner_t - dt)
+	level.tick_lifts(dt)
+	var ctl: Controls
+	if state == "play":
+		ctl = bot.controls() if bot != null else Controls.from_input()
+	else:
+		ctl = Controls.new()
+		ctl.aim_override = player.aim
+	player.tick(ctl, dt)
+	if state != "play":
+		state_t -= dt
+		if state_t <= 0.0 and finished == "":
+			finished = state
+
+	_update_arena(dt)
+	var pp := player.global_position
+	for e in enemies.duplicate():
+		if not is_instance_valid(e) or e.dead:
+			enemies.erase(e)
+		elif abs(e.global_position.x - pp.x) < 70.0:
+			e.tick(dt)
+	if boss and is_instance_valid(boss) and not boss.dead:
+		boss.tick(dt)
+	for p in projectiles.duplicate():
+		if not is_instance_valid(p) or p.dead:
+			projectiles.erase(p)
+		else:
+			p.tick(dt)
+	_update_hazards(dt)
+	_contact_damage()
+	_update_pickups(dt)
+	_update_fx(dt)
+
+	if player.dead and state == "play":
+		state = "lost"
+		state_t = 2.2
+		audio.music("")
+		audio.play("lose")
+		burst(player.center(), Color(1, 0.3, 0.3), 30, 8.0)
+		banner("DEFEATED!", 3.0)
+
+
+func _process(dt: float) -> void:
+	rig.follow(dt)
+	player.camera_close = rig.arm.get_hit_length() < 1.8
+
+
+func _update_arena(dt: float) -> void:
+	if not boss or not is_instance_valid(boss):
+		return
+	if gate_closed:
+		if not boss.active and not boss.dead:
+			intro_t -= dt
+			if intro_t <= 0.0:
+				boss.active = true
+		return
+	if level.in_arena(player.global_position) and player.global_position.x > LevelSupercity.GATE_X + 4.0:
+		gate_closed = true
+		level.close_gate()
+		intro_t = 2.0
+		banner("BOSS: MR POO", 2.0)
+		audio.play("roar")
+		audio.music("boss")
+		shake(0.6)
+
+
+func _update_hazards(dt: float) -> void:
+	for p in puddles.duplicate():
+		p["life"] -= dt
+		if p["life"] <= 0.0:
+			(p["node"] as Node3D).queue_free()
+			puddles.erase(p)
+		elif p["life"] < 1.0:
+			(p["node"] as Node3D).scale = Vector3(p["life"], 1, p["life"])
+	for w in waves.duplicate():
+		w["r"] += w["speed"] * dt
+		var n: Node3D = w["node"]
+		n.scale = Vector3(w["r"], 1.0 + w["r"] * 0.05, w["r"])
+		if not w["hit"]:
+			var d: Vector3 = player.global_position - w["pos"]
+			var flat := Vector2(d.x, d.z).length()
+			if abs(flat - w["r"]) < 1.2 and d.y < 1.0:
+				w["hit"] = true
+				player.take_damage(14.0, w["pos"], 10.0)
+		if w["r"] >= w["max"]:
+			n.queue_free()
+			waves.erase(w)
+
+
+func _contact_damage() -> void:
+	if player.dead or state != "play":
+		return
+	var pc := player.center()
+	var feet := player.global_position
+	var hits: Array = targets()
+	for e in hits:
+		var ec: Vector3 = e.center()
+		var flat := Vector2(pc.x - ec.x, pc.z - ec.z).length()
+		var top: float = e.global_position.y + e.height
+		if flat > e.radius + 0.5 or feet.y > top + 0.2 or pc.y + 1.2 < e.global_position.y:
+			continue
+		if player.velocity.y < -3.0 and feet.y > top - 0.7:
+			e.hurt(15.0 if e == boss else 25.0, Vector3.ZERO, 0.0)
+			player.velocity.y = 16.0 if e == boss else 13.0
+			audio.play("hit")
+		else:
+			player.take_damage(e.contact, ec, 11.0 if e == boss else 8.0)
+
+
+func _update_pickups(dt: float) -> void:
+	for p in pickups.duplicate():
+		var n: Node3D = p["node"]
+		n.rotation.y += dt * 2.5
+		n.position.y = p["pos"].y + sin(t * 3.0 + p["pos"].x) * 0.2
+		if n.global_position.distance_to(player.center()) < 1.6:
+			audio.play("pickup")
+			if p["kind"] == "health":
+				player.heal(45.0)
+				popup(n.global_position + Vector3.UP, "+HP", Color(0.5, 1, 0.5))
+			else:
+				player.energy = 100.0
+				popup(n.global_position + Vector3.UP, "+ENERGY", Color(0.5, 0.8, 1))
+			n.queue_free()
+			pickups.erase(p)
+
+
+func _update_fx(dt: float) -> void:
+	for p in particles.duplicate():
+		p["life"] -= dt
+		var n: MeshInstance3D = p["node"]
+		if p["life"] <= 0.0:
+			n.queue_free()
+			particles.erase(p)
+			continue
+		p["vel"].y -= 18.0 * dt
+		n.position += p["vel"] * dt
+		n.scale = Vector3.ONE * (p["life"] / p["max"])
+	for p in popups.duplicate():
+		p["life"] -= dt
+		var l: Label3D = p["node"]
+		if p["life"] <= 0.0:
+			l.queue_free()
+			popups.erase(p)
+			continue
+		l.position.y += 1.6 * dt
+		l.modulate.a = min(1.0, p["life"] * 2.0)

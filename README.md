@@ -30,6 +30,33 @@ If you want one file you can copy to another Ubuntu machine, run `./build.sh`. I
 
 You can also jump on enemies' heads to squash them.
 
+## SpiderVenomn 3D (new, work in progress)
+
+A third-person 3D version made with [Godot 4](https://godotengine.org). So far it has **Venom** in **Supercity** against **Mr Poo**.
+
+```bash
+./run3d.sh     # downloads Godot 4.7.2 the first time (about 60 MB), then plays
+```
+
+`./install.sh` also adds **SpiderVenomn 3D** to your app menu.
+
+| Key | Action |
+|---|---|
+| W A S D | Run (relative to the camera) |
+| Mouse | Look around and aim (crosshair) |
+| Space | Jump. Press again in mid-air to fly on symbiote wings |
+| Space / Ctrl (while flying) | Fly up / fly down |
+| Left click (J) | Heavy punch |
+| Right click (K) | Symbiote blast at the crosshair |
+| Shift (hold) | Swing on a tendril: aim at a skyscraper (or up at the sky) |
+| F (full energy) | Symbiote blast: wipes out every robot nearby, and a fifth of Mr Poo's health |
+| Esc | Pause (R restart, Q quit) |
+| F11 / M | Fullscreen / music on-off |
+
+Run down the avenue between the skyscrapers. Ride the yellow sky-lifts over the two broken bits of road, or swing or fly across. Falling in costs 15 health. At the end of the street is a plaza. When you go in, the gate shuts behind you and Mr Poo wakes up. He hops at you and lobs poo that leaves slippery puddles. At half health he gets angry: he throws more poo, his landings send out shockwaves you have to jump over, and he spawns mini-poos.
+
+Everything is built in code (`godot/scripts/`): the models, the city and the sound. There are no asset files. Run the test with `./run3d.sh --selftest`.
+
 ## Heroes
 
 | Hero | Left click | Right click | Shift |

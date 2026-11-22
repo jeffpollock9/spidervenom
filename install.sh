@@ -33,5 +33,20 @@ Categories=Game;ActionGame;
 DESKTOP
 chmod +x "$APPS/spidervenomn.desktop"
 
+echo "Setting up SpiderVenomn 3D (downloads Godot the first time)..."
+"$DIR/run3d.sh" --selftest >/dev/null 2>&1 || echo "  (3D selftest failed - the 2D game is still fine)"
+cat > "$APPS/spidervenomn-3d.desktop" <<DESKTOP
+[Desktop Entry]
+Type=Application
+Name=SpiderVenomn 3D
+Comment=Third-person 3D SpiderVenomn: Venom vs Mr Poo
+Exec="$DIR/run3d.sh"
+Icon=$ICON
+Terminal=false
+Categories=Game;ActionGame;
+DESKTOP
+chmod +x "$APPS/spidervenomn-3d.desktop"
+
 echo
 echo "Done! Start the game with ./run.sh (or 'uv run spidervenomn') or find 'SpiderVenomn' in your app menu."
+echo "For the 3D game: ./run3d.sh, or 'SpiderVenomn 3D' in your app menu."
