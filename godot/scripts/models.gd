@@ -1300,3 +1300,126 @@ static func animate_poo(d: Dictionary, t: float, angry: bool, look_dir: Vector3)
 		var a := t * (3.0 + k) + k * 2.0
 		(flies.get_child(k) as Node3D).position = Vector3(cos(a) * size * 0.6, size * 0.95 + sin(a * 1.7) * size * 0.2,
 			sin(a) * size * 0.6)
+
+
+# --------------------------------------------------------------------------- Cammy
+
+const CAMMY_SIZE := 0.92  # same skeleton, scaled to a massive ~2.5 m
+const CAMMY_SKIN := Color(0.76, 0.5, 0.36)
+
+
+static func cammy() -> Dictionary:
+	## A colossal wrestler: red singlet, black tights, a gold championship belt, red boots,
+	## a ginger buzz cut and beard, and arms like tree trunks.
+	var root := Node3D.new()
+	root.name = "CammyModel"
+	root.scale = Vector3.ONE * CAMMY_SIZE
+	var skin := mat(CAMMY_SKIN, 0.55, 0.0, 0.0, 0.25)
+	var singlet := mat(Color(0.82, 0.1, 0.1), 0.55, 0.0, 0.0, 0.2)
+	var tights := mat(Color(0.07, 0.07, 0.09), 0.45, 0.0, 0.0, 0.25)
+	var boot := mat(Color(0.8, 0.08, 0.08), 0.4)
+	var white := mat(Color(0.97, 0.97, 0.97), 0.6)
+	var gold := mat(Color(1.0, 0.78, 0.2), 0.25, 0.9, 0.4)
+	var ginger := mat(Color(0.62, 0.24, 0.06), 0.7)
+	var d := {"root": root}
+
+	# legs: tree-trunk thighs in black tights, red wrestling boots
+	for side: int in [-1, 1]:
+		var s := "l" if side < 0 else "r"
+		var hip := pivot(root, Vector3(0.28 * side, 1.08, 0.0), "leg_" + s)
+		_muscle(hip, 0.26, tights, Vector3(0, -0.06, 0), Vector3.ONE)
+		part(hip, capsule(0.23, 0.66), tights, Vector3(0, -0.28, 0))
+		_muscle(hip, 0.18, tights, Vector3(0, -0.24, -0.07), Vector3(1.05, 1.7, 0.85))
+		var knee := pivot(hip, Vector3(0, -0.56, 0), "shin_" + s)
+		_muscle(knee, 0.15, white, Vector3(0, 0.0, -0.04), Vector3(1.0, 0.8, 0.9))  # knee pad
+		part(knee, capsule(0.18, 0.56), boot, Vector3(0, -0.26, 0))
+		_muscle(knee, 0.13, skin, Vector3(0, -0.08, 0.06), Vector3(1.0, 1.4, 0.9))
+		part(knee, box(Vector3(0.05, 0.36, 0.02)), white, Vector3(0, -0.28, -0.18))  # laces
+		var ankle := pivot(knee, Vector3(0, -0.5, 0), "foot_" + s)
+		_muscle(ankle, 0.15, boot, Vector3(0, -0.01, -0.08), Vector3(1.0, 0.65, 1.8))
+		part(ankle, box(Vector3(0.26, 0.05, 0.5)), mat(Color(0.1, 0.1, 0.1), 0.6), Vector3(0, -0.09, -0.08))
+		d["leg_" + s] = hip
+		d["shin_" + s] = knee
+
+	# torso: red singlet over a barrel chest, gold championship belt round the middle
+	var torso := pivot(root, Vector3(0, 1.0, 0), "torso")
+	d["torso"] = torso
+	_muscle(torso, 0.33, tights, Vector3(0, 0.06, 0.0), Vector3(1.15, 0.6, 0.85))
+	part(torso, capsule(0.36, 0.8), singlet, Vector3(0, 0.42, 0.02), Vector3.ZERO, Vector3(1.08, 1.0, 0.8))
+	part(torso, cylinder(0.37, 0.37, 0.16, 20), gold, Vector3(0, 0.2, 0), Vector3.ZERO, Vector3(1.06, 1.0, 0.84))
+	part(torso, cylinder(0.14, 0.14, 0.05, 20), gold, Vector3(0, 0.2, -0.3), Vector3(PI / 2, 0, 0),
+		Vector3(1.3, 1.0, 1.0))  # the big belt plate
+	part(torso, sphere(0.06), mat(Color(0.9, 0.1, 0.15), 0.2, 0.3, 0.8), Vector3(0, 0.2, -0.34))  # a ruby
+	for side: int in [-1, 1]:
+		part(torso, cylinder(0.07, 0.07, 0.04, 12), gold, Vector3(0.22 * side, 0.2, -0.28),
+			Vector3(PI / 2, 0, 0.3 * side))  # side plates
+	var chest := pivot(torso, Vector3(0, 0.82, 0), "chest")
+	d["chest"] = chest
+	_muscle(chest, 0.54, singlet, Vector3(0, 0.0, 0.03), Vector3(1.2, 0.82, 0.72))
+	for side: int in [-1, 1]:
+		_muscle(chest, 0.28, singlet, Vector3(0.21 * side, 0.06, -0.19), Vector3(1.15, 0.8, 0.6))  # pecs
+		_muscle(chest, 0.25, singlet, Vector3(0.38 * side, -0.14, 0.05), Vector3(0.7, 1.4, 1.0))   # lats
+		_muscle(chest, 0.23, skin, Vector3(0.27 * side, 0.3, 0.08), Vector3(1.4, 0.75, 1.0),
+			Vector3(0, 0, -0.45 * side))  # massive traps
+		part(chest, box(Vector3(0.09, 0.4, 0.04)), singlet, Vector3(0.16 * side, 0.3, -0.2),
+			Vector3(0.3, 0, 0))  # singlet straps
+	part(chest, capsule(0.23, 0.42), skin, Vector3(0, 0.38, -0.02))  # neck like a bull
+
+	# arms: the biggest arms in Supercity, white wristbands
+	for side: int in [-1, 1]:
+		var s := "l" if side < 0 else "r"
+		var sh := pivot(chest, Vector3(0.72 * side, 0.2, 0.02), "arm_" + s)
+		_muscle(sh, 0.3, skin, Vector3(0.03 * side, 0.02, 0), Vector3(1.0, 0.95, 1.1))  # deltoid
+		part(sh, capsule(0.18, 0.6), skin, Vector3(0, -0.3, 0))
+		_muscle(sh, 0.19, skin, Vector3(0, -0.28, -0.1), Vector3(1.05, 1.5, 1.05))  # bicep
+		_muscle(sh, 0.16, skin, Vector3(0, -0.24, 0.09), Vector3(1.0, 1.7, 1.0))    # tricep
+		part(sh, capsule(0.012, 0.3), mat(CAMMY_SKIN.darkened(0.15), 0.5), Vector3(0.03 * side, -0.3, -0.27),
+			Vector3(0.2, 0, 0))  # a vein
+		var elbow := pivot(sh, Vector3(0, -0.58, 0), "fore_" + s)
+		part(elbow, capsule(0.16, 0.58), skin, Vector3(0, -0.24, 0))
+		_muscle(elbow, 0.16, skin, Vector3(0, -0.12, -0.03), Vector3(1.1, 1.5, 1.0))
+		part(elbow, cylinder(0.15, 0.15, 0.14, 14), white, Vector3(0, -0.42, 0))  # wristband
+		var wrist := pivot(elbow, Vector3(0, -0.52, 0), "hand_" + s)
+		_muscle(wrist, 0.15, skin, Vector3(0, -0.06, 0), Vector3(1.0, 1.0, 0.85))  # fists like hams
+		d["arm_" + s] = sh
+		d["fore_" + s] = elbow
+
+	# head: buzz cut, heavy brow, big ginger beard, a fierce scowl
+	var head := pivot(chest, Vector3(0, 0.64, -0.06), "head")
+	d["head"] = head
+	var eye := mat(Color(1, 1, 1), 0.2, 0.0, 0.2)
+	var iris := mat(Color(0.25, 0.45, 0.2), 0.3)
+	var dark := mat(Color(0.05, 0.04, 0.04), 0.4)
+	_muscle(head, 0.22, skin, Vector3(0, 0.07, 0), Vector3(1.0, 1.05, 1.05))       # skull
+	_muscle(head, 0.18, skin, Vector3(0, -0.06, -0.03), Vector3(1.05, 0.9, 1.0))  # big jaw
+	_muscle(head, 0.06, skin, Vector3(0, 0.13, -0.17), Vector3(2.9, 0.75, 0.9))   # heavy brow
+	for side: int in [-1, 1]:
+		_muscle(head, 0.05, skin, Vector3(0.215 * side, 0.03, 0.0), Vector3(0.5, 1.2, 0.9))  # ears
+		part(head, sphere(0.03), eye, Vector3(0.078 * side, 0.07, -0.185), Vector3.ZERO, Vector3(1.3, 0.7, 0.6))
+		part(head, sphere(0.016), iris, Vector3(0.078 * side, 0.07, -0.2))
+		part(head, sphere(0.008), dark, Vector3(0.078 * side, 0.07, -0.212))
+		part(head, box(Vector3(0.11, 0.03, 0.03)), ginger, Vector3(0.08 * side, 0.115, -0.205),
+			Vector3(0, 0, 0.3 * side))  # scowling eyebrows
+	part(head, capsule(0.028, 0.1), skin, Vector3(0, 0.03, -0.215), Vector3(-0.25, 0, 0))  # nose
+	_muscle(head, 0.038, skin, Vector3(0, -0.015, -0.225), Vector3(1.2, 0.8, 0.9))
+	# the beard and moustache, with a grim mouth showing through
+	_muscle(head, 0.19, ginger, Vector3(0, -0.12, -0.05), Vector3(1.05, 0.85, 1.0))
+	_muscle(head, 0.08, ginger, Vector3(0, -0.24, -0.1), Vector3(1.2, 0.9, 0.9))
+	part(head, capsule(0.03, 0.17), ginger, Vector3(0, -0.06, -0.215), Vector3(0, 0, PI / 2))
+	part(head, box(Vector3(0.09, 0.018, 0.02)), dark, Vector3(0, -0.1, -0.225))
+	# a ginger buzz cut, shaved short
+	_muscle(head, 0.226, ginger, Vector3(0, 0.12, 0.02), Vector3(1.0, 0.62, 1.03))
+	return d
+
+
+static func boulder(r: float) -> Node3D:
+	## A lump of rock torn out of the street.
+	var n := Node3D.new()
+	var rock := mat(Color(0.5, 0.47, 0.43), 0.95)
+	var rock2 := mat(Color(0.4, 0.37, 0.34), 0.95)
+	part(n, sphere(r, 10), rock, Vector3.ZERO, Vector3(0.3, 0.5, 0.1), Vector3(1.1, 0.85, 1.0))
+	part(n, sphere(r * 0.6, 8), rock2, Vector3(r * 0.5, r * 0.3, 0.1), Vector3.ZERO, Vector3(1.0, 0.8, 1.1))
+	part(n, sphere(r * 0.5, 8), rock2, Vector3(-r * 0.45, -r * 0.3, r * 0.3))
+	part(n, box(Vector3(r * 1.3, r * 0.25, r * 1.1)), mat(Color(0.25, 0.25, 0.27), 0.9),
+		Vector3(0, r * 0.75, 0), Vector3(0.2, 0.4, 0.1))  # a slab of tarmac still stuck on top
+	return n

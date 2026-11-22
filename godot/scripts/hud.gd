@@ -102,6 +102,19 @@ const HERO_INFO := {
 			["F (full energy)", "REINDEER STAMPEDE: all nine reindeer charge in"],
 		],
 	},
+	"cammy": {
+		"title": "CAMMY",
+		"blurb": "Really powerful and really strong. Lifts robots and throws them.",
+		"colour": Color(1.0, 0.5, 0.2),
+		"stats": [["POWER", 5], ["SPEED", 3], ["HEALTH", 5], ["SMART", 3], ["LOOKS", 3]],
+		"controls": [
+			["LEFT CLICK (J)", "MEGA PUNCH: robots go flying"],
+			["RIGHT CLICK (K)", "Rip a boulder out of the street and hurl it"],
+			["SHIFT", "LIFT the robot in front of you (SHIFT again: THROW it)"],
+			["SHIFT on the boss", "BODY SLAM (uses energy)"],
+			["F (full energy)", "EARTHQUAKE: smash every robot nearby"],
+		],
+	},
 }
 
 var game

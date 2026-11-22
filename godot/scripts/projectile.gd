@@ -71,6 +71,14 @@ func setup(g, pos: Vector3, v: Vector3, side: String, k: String, dmg: float, r: 
 			Models.part(self, Models.sphere(r * 0.7, 8), white, Vector3(0, -r * 0.6, -r * 1.2))
 			Models.part(self, Models.box(Vector3(r * 1.3, r * 0.3, r * 0.4)), Models.mat(Color(0.85, 0.2, 0.2), 0.8),
 				Vector3(0, 0, r * 1.3))
+		"boulder":
+			add_child(Models.boulder(r))
+		"robot":  # a robot Cammy has thrown, spinning end over end
+			var spin := Node3D.new()
+			var bot: Node3D = Models.robot(opts.get("shooter", false))["root"]
+			bot.position.y = -0.9
+			spin.add_child(bot)
+			add_child(spin)
 		"hackbolt":
 			Models.part(self, Models.capsule(r * 0.6, r * 4.0), Models.mat(Color(0.2, 1.0, 0.4), 0.3, 0.0, 3.0),
 				Vector3.ZERO, Vector3(PI / 2, 0, 0))
@@ -130,6 +138,8 @@ func tick(dt: float) -> void:
 		var f := vel.normalized()
 		if abs(f.dot(Vector3.UP)) < 0.99:
 			look_at(position + f, Vector3.UP)
+	if kind == "robot" or kind == "boulder":
+		(get_child(0) as Node3D).rotation.x = -age * 10.0
 	if kind == "clap":
 		scale = Vector3.ONE * (1.0 + age * 1.5)
 	if kind == "symbiote":
@@ -160,13 +170,23 @@ func kill(hit_ground: bool) -> void:
 	if dead:
 		return
 	dead = true
-	if splash > 0.0 and owner_side == "player":  # a present bursts open
+	if splash > 0.0 and owner_side == "player":  # a present bursts open, a boulder smashes
 		for e in game.targets():
 			if not hit_ids.has(e.get_instance_id()) and position.distance_to(e.center()) < splash + e.radius:
 				e.hurt(damage * 0.6, e.center() - position, knock)
-		game.burst(position, Color(1.0, 0.85, 0.3), 14, 7.0)
-		game.burst(position, Color(0.9, 0.15, 0.15), 10, 6.0)
 	match kind:
+		"present":
+			game.burst(position, Color(1.0, 0.85, 0.3), 14, 7.0)
+			game.burst(position, Color(0.9, 0.15, 0.15), 10, 6.0)
+		"boulder":
+			game.burst(position, Color(0.5, 0.47, 0.43), 20, 8.0)
+			game.audio.play("explode")
+			game.shake(0.35)
+		"robot":
+			game.burst(position, Color(0.62, 0.64, 0.7), 16, 8.0)
+			game.burst(position, Color(1.0, 0.85, 0.4), 12, 7.0)
+			game.audio.play("explode")
+			game.shake(0.35)
 		"stink":  # bursts into a cloud that hangs about
 			game.add_stink_cloud(position + Vector3.DOWN * 1.0, 3.5, 4.0, 6.0, 6.0)
 			game.audio.play("splat")

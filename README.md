@@ -32,7 +32,7 @@ You can also jump on enemies' heads to squash them.
 
 ## SpiderVenomn 3D (new, work in progress)
 
-A third-person 3D version made with [Godot 4](https://godotengine.org). Pick **Venom**, **Spider-Man**, **Jamie's Dad**, **Jamie**, **Charley**, the **Hacker** or **Santa** and save **Supercity** from **Mr Poo**.
+A third-person 3D version made with [Godot 4](https://godotengine.org). Pick **Venom**, **Spider-Man**, **Jamie's Dad**, **Jamie**, **Charley**, the **Hacker**, **Santa** or **Cammy** and save **Supercity** from **Mr Poo**.
 
 ```bash
 ./run3d.sh     # downloads Godot 4.7.2 the first time (about 60 MB), then plays
@@ -49,7 +49,7 @@ Controls for both heroes:
 | W A S D | Run (relative to the camera) |
 | Mouse | Look around and aim (crosshair) |
 | Left click (J) | Punch |
-| Shift (hold) | Swing: aim at a skyscraper (or up at the sky). Jamie's Dad sprints instead, Jamie uses his jetpack, Charley hides, the Hacker glitches forward, Santa says HO HO HO |
+| Shift (hold) | Swing: aim at a skyscraper (or up at the sky). Jamie's Dad sprints instead, Jamie uses his jetpack, Charley hides, the Hacker glitches forward, Santa says HO HO HO, Cammy lifts a robot (Shift again throws it) |
 | Esc | Pause (R restart, H change hero, Q quit) |
 | F11 / M | Fullscreen / music on-off |
 
@@ -93,6 +93,14 @@ The **Hacker** can hack:
 - **Left click:** throws a present that bursts open and hurts everything near where it lands.
 - **Shift: HO HO HO!** Such a jolly laugh that the robots nearby stop for a couple of seconds to listen.
 - **F (full energy): reindeer stampede.** All nine reindeer charge in, one for every robot nearby (spare ones go for Mr Poo). Every robot is knocked out.
+
+**Cammy** is really powerful and really strong: a massive wrestler with a ginger beard, a red singlet and a gold championship belt, and 260 health.
+
+- **Left click: mega punch.** One punch knocks a robot out.
+- **Right click:** rips a boulder out of the street and hurls it. It smashes whatever it lands on and hurts anything next to it.
+- **Shift: lift.** He picks up the robot in front of him and holds it over his head (it can't do a thing). **Shift again** (or right click) throws it at the others, and it smashes them.
+- **Shift next to the boss: body slam.** The boss is too big to carry about, but not too big to pick up and slam down (65 damage, uses some energy).
+- **F (full energy): earthquake.** He leaps up and comes crashing down so hard the street splits. Every robot nearby is smashed and flung in the air, and the boss loses a fifth of its health.
 
 Run down the avenue between the skyscrapers. Ride the yellow sky-lifts over the two broken bits of road, or swing or fly across. Falling in costs 15 health. At the end of the street is a plaza. When you go in, the gate shuts behind you and Mr Poo wakes up. He hops at you and lobs poo that leaves slippery puddles. At half health he gets angry: he throws more poo, his landings send out shockwaves you have to jump over, and he spawns mini-poos.
 

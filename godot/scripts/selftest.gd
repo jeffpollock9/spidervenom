@@ -83,6 +83,10 @@ func run() -> void:
 		await spiderman_tests()
 		_finish(t0)
 		return
+	if OS.get_cmdline_user_args().has("--cammy-only"):
+		await cammy_tests()
+		_finish(t0)
+		return
 	if OS.get_cmdline_user_args().has("--santa-only"):
 		await santa_tests()
 		_finish(t0)
@@ -340,6 +344,7 @@ func run() -> void:
 	await charley_tests()
 	await hacker_tests()
 	await santa_tests()
+	await cammy_tests()
 	await cattoon_tests()
 	_finish(t0)
 
@@ -367,7 +372,7 @@ func spiderman_tests() -> void:
 		"hero select picks Spider-Man (%s)" % game.hero_id)
 	await shot("select")
 	var classes := {"venom": Venom, "spiderman": Spiderman, "jamiesdad": JamiesDad, "jamie": Jamie,
-		"charley": Charley, "hacker": Hacker, "santa": Santa}
+		"charley": Charley, "hacker": Hacker, "santa": Santa, "cammy": Cammy}
 	var n: int = game.HEROES.size()
 	var right := true
 	for i in range(2, n + 1):  # step through all of them and round to Venom again
@@ -1325,6 +1330,154 @@ func santa_tests() -> void:
 	cur = Controls.new()
 	await frames(220)
 	check(game.finished == "won", "Santa saves Supercity (%s)" % game.finished)
+
+
+func cammy_tests() -> void:
+	print("  --- Cammy")
+	game.state = "title"
+	game.hero_id = "cammy"
+	game.new_game()
+	game.open_select()
+	await frames(40)
+	await shot("cammy_select")
+	game.start_play()
+
+	# --- really strong: one punch and a robot's gone
+	var p := await fresh()
+	clear_enemies()
+	check(p is Cammy and p.max_hp >= 250.0, "playing as Cammy (%d hp)" % p.max_hp)
+	var foe: Enemy = game.spawn_enemy("walker", p.global_position + Vector3(2.6, 0.3, 0))
+	await frames(3)
+	foe.daze(2.0)
+	cur.aim_override = foe.center()
+	cur.primary_pressed = true
+	await frames(3)
+	check(not is_instance_valid(foe) or foe.dead, "one MEGA PUNCH knocks out a robot")
+	cur = Controls.new()
+
+	# --- RIGHT CLICK: a boulder smashes a robot (and the one next to it)
+	await frames(30)  # punch cooldown
+	clear_enemies()
+	foe = game.spawn_enemy("shooter", p.global_position + Vector3(12, 0.3, 0))
+	var next_to: Enemy = game.spawn_enemy("walker", p.global_position + Vector3(12, 0.3, 2.0))
+	await frames(3)
+	next_to.daze(3.0)
+	cur.aim_override = foe.center()
+	cur.special_pressed = true
+	await frames(2)
+	cur = Controls.new()
+	cur.aim_override = foe.center() if is_instance_valid(foe) else p.center()
+	await frames(10)
+	await shot("cammy_boulder")
+	await frames(40)
+	check(not is_instance_valid(foe) or foe.dead, "a thrown boulder smashes a robot")
+	check(not is_instance_valid(next_to) or next_to.hp < next_to.max_hp, "and the smash hurts the one next to it")
+	cur = Controls.new()
+
+	# --- SHIFT lifts a robot over his head; SHIFT again throws it at another one
+	p = await fresh()
+	clear_enemies()
+	var lifted: Enemy = game.spawn_enemy("walker", p.global_position + Vector3(2.2, 0.3, 0))
+	var target: Enemy = game.spawn_enemy("shooter", p.global_position + Vector3(14, 0.3, 0))
+	await frames(3)
+	lifted.daze(1.0)
+	cur.aim_override = target.center()
+	await frames(2)
+	cur.alt_pressed = true
+	await frames(1)
+	cur.alt_pressed = false
+	check(p.held == lifted and lifted.held, "SHIFT lifts the robot in front of him")
+	await frames(30)
+	check(lifted.global_position.y > p.global_position.y + 2.0, "he holds it up over his head (%.1f m up)" % (lifted.global_position.y - p.global_position.y))
+	var hp0 := p.hp
+	await frames(30)
+	check(p.hp == hp0 and not game.targets().has(lifted), "a lifted robot can't hurt him or be hit")
+	await shot("cammy_lift")
+	await frames(1)  # back in step with the physics frames before pressing SHIFT
+	cur.alt_pressed = true
+	await frames(1)
+	cur = Controls.new()
+	cur.aim_override = target.center() if is_instance_valid(target) else p.center()
+	check(p.held == null and (not is_instance_valid(lifted) or lifted.dead), "SHIFT again throws it")
+	await frames(8)
+	await shot("cammy_throw")
+	await frames(50)
+	check(not is_instance_valid(target) or target.dead, "the thrown robot smashes the other one")
+	cur = Controls.new()
+
+	# --- nothing in front: nothing lifted
+	clear_enemies()
+	cur.alt_pressed = true
+	await frames(2)
+	check(p.held == null, "nothing in front: nothing to lift")
+	cur = Controls.new()
+
+	# --- EARTHQUAKE
+	p = await fresh()
+	clear_enemies()
+	var foes: Array = []
+	for k in 6:
+		foes.append(game.spawn_enemy("walker" if k % 2 else "shooter", p.global_position + Vector3(6 + k * 4, 0.3, -8 + k * 3)))
+	await frames(3)
+	p.energy = 100.0
+	cur.ult_pressed = true
+	await frames(2)
+	cur = Controls.new()
+	check(p.quaking and p.velocity.y > 5.0, "EARTHQUAKE: he leaps up")
+	var landed := false
+	for i in 150:
+		await frames(1)
+		if not p.quaking:
+			landed = true
+			break
+	check(landed and p.is_on_floor(), "and comes crashing down")
+	await frames(6)
+	await shot("cammy_quake")
+	var down := 0
+	for e in foes:
+		if not is_instance_valid(e) or e.dead:
+			down += 1
+	check(down == 6, "the earthquake smashes every robot nearby (%d/6)" % down)
+	await frames(60)
+
+	# --- Cammy vs Mr Poo: body slams, boulders and punches
+	p = await fresh()
+	clear_enemies()
+	p.global_position = Vector3(275, 0.3, 0)
+	await frames(150)
+	var boss: Boss = game.boss
+	var hp_start := boss.hp
+	var damage := 0.0
+	var slammed := false
+	for f in 60 * 12:
+		if not is_instance_valid(boss) or boss.dead:
+			break
+		p.hp = p.max_hp
+		cur.aim_override = boss.center()
+		var to := boss.global_position - p.global_position
+		var dist := Vector2(to.x, to.z).length()
+		game.rig.face_dir(Vector3(to.x, 0, to.z).normalized())
+		cur.move = Vector2(0, 1) if dist > 3.5 else Vector2.ZERO
+		cur.jump_pressed = dist > 6.0 and f % 30 == 0  # hop over the fountain
+		cur.jump_held = cur.jump_pressed
+		cur.alt_pressed = dist < 5.0 and p.energy >= 20.0 and f % 20 == 0
+		cur.special_pressed = dist > 7.0 and p.cd <= 0.0 and p.energy >= 30.0 and f % 30 == 0
+		cur.primary_pressed = dist < 5.0 and p.cd <= 0.0 and f % 20 == 10
+		var before := boss.hp
+		await frames(1)
+		if is_instance_valid(boss):
+			if p.slam_cd > 1.4 and before - boss.hp >= 60.0:  # a body slam just landed
+				slammed = true
+			damage = hp_start - boss.hp
+		if f == 200:
+			await shot("cammy_boss")
+	check(slammed, "SHIFT on the boss: BODY SLAM")
+	check(damage > 250.0, "Cammy batters Mr Poo (%.0f damage)" % damage)
+	if is_instance_valid(boss) and not boss.dead:
+		boss.hurt(1e6, Vector3.ZERO)
+	cur = Controls.new()
+	await frames(220)
+	check(game.finished == "won", "Cammy saves Supercity (%s)" % game.finished)
 
 
 func cattoon_tests() -> void:

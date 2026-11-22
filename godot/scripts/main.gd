@@ -6,7 +6,7 @@ extends Node3D
 var audio: GameAudio
 var level: LevelSupercity
 var world: Node3D
-const HEROES := ["venom", "spiderman", "jamiesdad", "jamie", "charley", "hacker", "santa"]
+const HEROES := ["venom", "spiderman", "jamiesdad", "jamie", "charley", "hacker", "santa", "cammy"]
 
 var player: Hero
 var hero_id := "venom"
@@ -130,6 +130,8 @@ static func make_hero(id: String, g) -> Hero:
 			return Hacker.new(g)
 		"santa":
 			return Santa.new(g)
+		"cammy":
+			return Cammy.new(g)
 	return Venom.new(g)
 
 
@@ -211,7 +213,7 @@ func spawn_projectile(pos: Vector3, v: Vector3, side: String, kind: String, dmg:
 func targets() -> Array:
 	var out: Array = []
 	for e in enemies:
-		if is_instance_valid(e) and not e.dead and e.hacked_t <= 0.0:  # hacked robots are on your side
+		if is_instance_valid(e) and not e.dead and e.hacked_t <= 0.0 and not e.held:  # hacked robots are on your side
 			out.append(e)
 	if boss and boss.active and not boss.dead:
 		out.append(boss)
@@ -396,6 +398,39 @@ func dad_smash(at: Vector3) -> void:
 	audio.play("roar")
 	shake(1.3)
 	banner("DAD SMASH!", 1.3)
+
+
+func earthquake(at: Vector3) -> void:
+	## Cammy's ultimate: he lands so hard the street splits. Every robot nearby gets smashed
+	## and flung up in the air, and the boss loses a fifth of its health.
+	for e in targets():
+		var dd: float = e.center().distance_to(at)
+		if dd > 40.0:
+			continue
+		if e == boss:
+			boss.hurt(boss.max_hp * 0.2, Vector3.ZERO)
+		else:
+			e.hurt(70.0, e.center() - at, 14.0)
+			if is_instance_valid(e) and not e.dead:
+				e.velocity.y = 12.0
+				e.daze(2.0)
+	for k in 4:
+		ground_wave_fx(at + Vector3.UP * (0.2 + k * 0.3), Color(0.55, 0.4, 0.25), 40.0, 30.0 + k * 12.0)
+	for i in 24:  # chunks of street flung up all round him
+		if particles.size() > 300:
+			break
+		var a := i * TAU / 24.0
+		var rr := randf_range(3.0, 14.0)
+		var rock := Models.boulder(randf_range(0.3, 0.7))
+		rock.position = at + Vector3(cos(a) * rr, 0.2, sin(a) * rr)
+		world.add_child(rock)
+		particles.append({"node": rock, "vel": Vector3(cos(a) * 2.0, randf_range(9.0, 15.0), sin(a) * 2.0),
+			"life": 1.4, "max": 1.4})
+	burst(at, Color(0.6, 0.52, 0.42), 70, 18.0)
+	audio.play("explode")
+	audio.play("rumble")
+	shake(1.6)
+	banner("EARTHQUAKE!", 1.3)
 
 
 func genius_hack(at: Vector3) -> void:

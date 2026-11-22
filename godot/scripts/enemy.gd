@@ -24,6 +24,7 @@ var cocoon: Node3D
 var hacked_t := 0.0        # hacked by the Hacker: fights on your side until its battery runs out
 var hack_fx: Node3D
 var attack_cd := 0.0
+var held := false          # lifted over Cammy's head: helpless
 
 
 func _init(g, k: String) -> void:
@@ -170,6 +171,9 @@ func die() -> void:
 func tick(dt: float) -> void:
 	t += dt
 	flash = max(0.0, flash - dt)
+	if held:  # Cammy moves it about; all it can do is wriggle
+		Models.set_flash(model["root"], flash > 0.0)
+		return
 	var player = game.player
 	var to: Vector3 = player.global_position - global_position
 	var flat := Vector3(to.x, 0, to.z)
