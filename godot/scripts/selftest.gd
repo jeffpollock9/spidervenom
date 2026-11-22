@@ -1384,6 +1384,7 @@ func cattoon_tests() -> void:
 	p.global_position = boss.global_position + Vector3(-16, 0.5, 0)
 	await frames(30)
 	boss.stun_t = 0.0
+	boss._go("stink", 0.3)  # (she picks her moves at random; make sure she fires one now)
 	var cloud := false
 	for i in 60 * 8:
 		await frames(1)
