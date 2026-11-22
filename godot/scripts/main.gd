@@ -1,12 +1,12 @@
 extends Node3D
-## SpiderVenomn 3D: pick a hero (Venom, Spider-Man, Jamie's Dad, Jamie, Charley or the Hacker)
-## and save Supercity from Mr Poo.
+## SpiderVenomn 3D: pick a hero (Venom, Spider-Man, Jamie's Dad, Jamie, Charley, the Hacker or
+## Santa) and save Supercity from Mr Poo.
 ## Owns the level, the hero, enemies, projectiles and effects, and runs the game states.
 
 var audio: GameAudio
 var level: LevelSupercity
 var world: Node3D
-const HEROES := ["venom", "spiderman", "jamiesdad", "jamie", "charley", "hacker"]
+const HEROES := ["venom", "spiderman", "jamiesdad", "jamie", "charley", "hacker", "santa"]
 
 var player: Hero
 var hero_id := "venom"
@@ -20,6 +20,7 @@ var waves: Array = []       # expanding ground shockwaves from an angry Mr Poo
 var pickups: Array = []     # {node, kind, pos}
 var particles: Array = []
 var popups: Array = []
+var reindeer: Array = []    # Santa's reindeer charging about
 var state := "title"        # title | select | play | paused | won | lost
 var state_t := 0.0
 var finished := ""
@@ -69,6 +70,7 @@ func new_game() -> void:
 	pickups.clear()
 	particles.clear()
 	popups.clear()
+	reindeer.clear()
 	world = Node3D.new()
 	add_child(world)
 	level = LevelSupercity.new()
@@ -105,6 +107,8 @@ static func make_hero(id: String, g) -> Hero:
 			return Charley.new(g)
 		"hacker":
 			return Hacker.new(g)
+		"santa":
+			return Santa.new(g)
 	return Venom.new(g)
 
 
@@ -420,6 +424,43 @@ func system_hack(at: Vector3) -> void:
 	banner("SYSTEM HACKED!", 1.4)
 
 
+func spawn_reindeer(from: Vector3, tgt, at: Vector3, dmg: float, boss_dmg: float, deer_name := "",
+		rudolph := false) -> Reindeer:
+	var r := Reindeer.new()
+	world.add_child(r)
+	r.setup(self, from, tgt, at, dmg, boss_dmg, deer_name, rudolph)
+	reindeer.append(r)
+	return r
+
+
+func reindeer_stampede(santa: Hero) -> void:
+	## Santa's ultimate: all nine reindeer gallop in, one for every robot nearby (and the
+	## rest go for Mr Poo). Every robot is knocked out.
+	var at := santa.center()
+	var foes: Array = []
+	for e in targets():
+		if e != boss and e.center().distance_to(at) < 45.0:
+			foes.append(e)
+	var boss_near: bool = boss and boss.active and not boss.dead and boss.center().distance_to(at) < 45.0
+	var n: int = max(9, min(foes.size(), 16))
+	var back := Vector3(sin(santa.face_yaw), 0, cos(santa.face_yaw))
+	var side := back.cross(Vector3.UP)
+	for i in n:
+		var tgt = null
+		if i < foes.size():
+			tgt = foes[i]
+		elif boss_near:
+			tgt = boss
+		var goal: Vector3 = santa.global_position - back * 30.0 + side * (i - n / 2.0) * 3.0
+		var start := santa.global_position + back * 8.0 + side * (i - n / 2.0) * 2.5 + Vector3.UP * (8.0 + (i % 3) * 2.0)
+		var deer_name: String = Santa.NAMES[i % 9]
+		spawn_reindeer(start, tgt, goal, 999.0, 16.0, deer_name, deer_name == "RUDOLPH")
+	audio.play("bells")
+	audio.play("hohoho")
+	shake(0.6)
+	banner("REINDEER STAMPEDE!", 1.6)
+
+
 func beam(a: Vector3, b: Vector3, colour: Color) -> void:
 	## A quick zig-zag line of electricity from a to b.
 	var n := Node3D.new()
@@ -584,6 +625,11 @@ func _physics_process(dt: float) -> void:
 			projectiles.erase(p)
 		else:
 			p.tick(dt)
+	for r in reindeer.duplicate():
+		if not is_instance_valid(r) or r.is_queued_for_deletion():
+			reindeer.erase(r)
+		else:
+			r.tick(dt)
 	_update_hazards(dt)
 	_contact_damage()
 	_update_pickups(dt)

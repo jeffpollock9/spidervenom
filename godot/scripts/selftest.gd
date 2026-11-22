@@ -78,6 +78,10 @@ func run() -> void:
 		await spiderman_tests()
 		_finish(t0)
 		return
+	if OS.get_cmdline_user_args().has("--santa-only"):
+		await santa_tests()
+		_finish(t0)
+		return
 	if OS.get_cmdline_user_args().has("--hacker-only"):
 		await hacker_tests()
 		_finish(t0)
@@ -330,6 +334,7 @@ func run() -> void:
 	await jamie_tests()
 	await charley_tests()
 	await hacker_tests()
+	await santa_tests()
 	_finish(t0)
 
 
@@ -356,7 +361,7 @@ func spiderman_tests() -> void:
 		"hero select picks Spider-Man (%s)" % game.hero_id)
 	await shot("select")
 	var classes := {"venom": Venom, "spiderman": Spiderman, "jamiesdad": JamiesDad, "jamie": Jamie,
-		"charley": Charley, "hacker": Hacker}
+		"charley": Charley, "hacker": Hacker, "santa": Santa}
 	var n: int = game.HEROES.size()
 	var right := true
 	for i in range(2, n + 1):  # step through all of them and round to Venom again
@@ -1161,3 +1166,156 @@ func hacker_tests() -> void:
 	cur = Controls.new()
 	await frames(220)
 	check(game.finished == "won", "the Hacker saves Supercity (%s)" % game.finished)
+
+
+func santa_tests() -> void:
+	print("  --- Santa")
+	game.state = "title"
+	game.hero_id = "santa"
+	game.new_game()
+	game.open_select()
+	await frames(40)
+	await shot("santa_select")
+	game.start_play()
+
+	# --- RIGHT CLICK: a reindeer comes and flattens the robot you point at
+	var p := await fresh()
+	clear_enemies()
+	check(p is Santa, "playing as Santa")
+	var foe: Enemy = game.spawn_enemy("shooter", p.global_position + Vector3(14, 0.3, 4))
+	var other: Enemy = game.spawn_enemy("walker", p.global_position + Vector3(14, 0.3, -12))
+	await frames(3)
+	cur.aim_override = foe.center()
+	cur.special_pressed = true
+	await frames(2)
+	check(game.reindeer.size() == 1, "RIGHT CLICK calls a reindeer")
+	cur = Controls.new()
+	var got := false
+	for i in 120:
+		await frames(1)
+		if i == 14:
+			await shot("santa_reindeer")
+		if not is_instance_valid(foe) or foe.dead:
+			got = true
+			break
+	check(got, "the reindeer defeats the robot")
+	check(is_instance_valid(other) and other.hp == other.max_hp, "and leaves the one you weren't pointing at")
+	await frames(170)
+	check(game.reindeer.is_empty(), "then flies off home")
+
+	# --- a reindeer flattens everything in its way
+	clear_enemies()
+	var line: Array = []
+	for k in 3:
+		line.append(game.spawn_enemy("walker", p.global_position + Vector3(8 + k * 4, 0.3, 0)))
+	await frames(3)
+	for e in line:
+		e.daze(5.0)  # keep them standing in a line
+	p.energy = 100.0
+	cur.aim_override = (line[2] as Enemy).center()
+	cur.special_pressed = true
+	await frames(1)
+	cur = Controls.new()
+	await frames(120)
+	var flat := 0
+	for e in line:
+		if not is_instance_valid(e) or e.dead:
+			flat += 1
+	var left := []
+	for e in line:
+		if is_instance_valid(e) and not e.dead:
+			left.append("x=%.1f hp=%d" % [e.global_position.x - p.global_position.x, e.hp])
+	check(flat == 3, "a reindeer flattens every robot in its way (%d/3) %s" % [flat, left])
+
+	# --- LEFT CLICK: throw a present
+	p = await fresh()
+	clear_enemies()
+	foe = game.spawn_enemy("shooter", p.global_position + Vector3(9, 0.3, 0))
+	await frames(3)
+	cur.aim_override = foe.center()
+	cur.primary_pressed = true
+	await frames(60)
+	check(not is_instance_valid(foe) or foe.hp < foe.max_hp, "a thrown present bursts on a robot")
+	cur = Controls.new()
+
+	# --- SHIFT: ho ho ho
+	clear_enemies()
+	foe = game.spawn_enemy("walker", p.global_position + Vector3(5, 0.3, 0))
+	await frames(3)
+	p.energy = 100.0
+	cur.alt_pressed = true
+	await frames(2)
+	check(foe.stun_t > 0.0, "HO HO HO stops a robot in its tracks")
+	cur = Controls.new()
+
+	# --- sleigh ride
+	p = await fresh()
+	clear_enemies()
+	cur.jump_pressed = true
+	cur.jump_held = true
+	await frames(15)
+	cur.jump_pressed = true
+	await frames(2)
+	check(p.flying and (p.model["sleigh"] as Node3D).visible, "jump in mid-air: the sleigh appears")
+	var y0 := p.global_position.y
+	cur.move = Vector2(0, 1)
+	await frames(90)
+	check(p.global_position.y - y0 > 8.0, "the sleigh flies (%.1f m up)" % (p.global_position.y - y0))
+	await shot("santa_sleigh")
+	cur = Controls.new()
+	cur.down_held = true
+	await frames(240)
+	check(not p.flying and not (p.model["sleigh"] as Node3D).visible, "lands and the sleigh goes away")
+	cur = Controls.new()
+
+	# --- REINDEER STAMPEDE
+	p = await fresh()
+	clear_enemies()
+	var foes: Array = []
+	for k in 6:
+		foes.append(game.spawn_enemy("walker" if k % 2 else "shooter", p.global_position + Vector3(8 + k * 4, 0.3, -8 + k * 3)))
+	await frames(3)
+	p.energy = 100.0
+	cur.ult_pressed = true
+	await frames(2)
+	check(game.reindeer.size() >= 9, "REINDEER STAMPEDE brings all the reindeer (%d)" % game.reindeer.size())
+	cur = Controls.new()
+	await frames(16)
+	await shot("santa_stampede")
+	for i in 150:
+		await frames(1)
+	var down := 0
+	for e in foes:
+		if not is_instance_valid(e) or e.dead:
+			down += 1
+	check(down == 6, "the stampede defeats every robot (%d/6)" % down)
+
+	# --- Santa vs Mr Poo
+	p = await fresh()
+	clear_enemies()
+	p.global_position = Vector3(275, 0.3, 0)
+	await frames(150)
+	var boss: MrPoo = game.boss
+	var hp_start := boss.hp
+	var damage := 0.0
+	for f in 60 * 12:
+		if not is_instance_valid(boss) or boss.dead:
+			break
+		p.hp = p.max_hp
+		cur.aim_override = boss.center()
+		var to := boss.global_position - p.global_position
+		game.rig.face_dir(Vector3(to.x, 0, to.z).normalized())
+		cur.move = Vector2(0, 1) if Vector2(to.x, to.z).length() > 9.0 else Vector2(0, -0.5)
+		cur.special_pressed = p.cd <= 0.0 and p.energy >= 16.0 and f % 30 == 0
+		cur.primary_pressed = p.cd <= 0.0 and f % 30 == 15
+		await frames(1)
+		if is_instance_valid(boss):
+			damage = hp_start - boss.hp
+		if f == 120:
+			await shot("santa_boss")
+	check(damage > 150.0, "Santa's reindeer batter Mr Poo (%.0f damage)" % damage)
+	if is_instance_valid(boss) and not boss.dead:
+		boss.hurt(1e6, Vector3.ZERO)
+	cur = Controls.new()
+	await frames(220)
+	check(game.finished == "won", "Santa saves Supercity (%s)" % game.finished)

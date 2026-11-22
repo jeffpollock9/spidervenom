@@ -89,6 +89,19 @@ const HERO_INFO := {
 			["F (full energy)", "SYSTEM HACK: every robot nearby joins your side"],
 		],
 	},
+	"santa": {
+		"title": "SANTA",
+		"blurb": "His reindeer come and defeat the enemies. Ho ho ho!",
+		"colour": Color(1.0, 0.3, 0.3),
+		"stats": [["POWER", 4], ["SPEED", 3], ["HEALTH", 4], ["SMART", 4], ["LOOKS", 4]],
+		"controls": [
+			["RIGHT CLICK (K)", "Call a reindeer: it charges the robot you point at"],
+			["SPACE in the air", "Sleigh ride! Fly about (SPACE up, CTRL down)"],
+			["LEFT CLICK (J)", "Throw a present: it bursts open"],
+			["SHIFT", "HO HO HO! Robots nearby stop and listen"],
+			["F (full energy)", "REINDEER STAMPEDE: all nine reindeer charge in"],
+		],
+	},
 }
 
 var game
@@ -209,7 +222,7 @@ func _draw_title(sz: Vector2) -> void:
 	_outline_white("VENOMN", Vector2(sz.x / 2 + 8, 130), 110)
 	text("3D", Vector2(sz.x / 2, 200), 60, Color(1, 0.9, 0.3), HORIZONTAL_ALIGNMENT_CENTER, -1, 10)
 	text("Save Supercity from Mr Poo!", Vector2(sz.x / 2, 250), 30, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	text("Six heroes to choose from", Vector2(sz.x / 2, 330), 30, Color(1, 0.9, 0.45), HORIZONTAL_ALIGNMENT_CENTER)
+	text("Seven heroes to choose from", Vector2(sz.x / 2, 330), 30, Color(1, 0.9, 0.45), HORIZONTAL_ALIGNMENT_CENTER)
 	var y := 400.0
 	for row in COMMON:
 		text(row[0], Vector2(sz.x / 2 - 30, y), 22, Color(1, 0.9, 0.45), HORIZONTAL_ALIGNMENT_RIGHT)
@@ -225,20 +238,18 @@ func _draw_select(sz: Vector2) -> void:
 	draw_rect(Rect2(0, 0, sz.x * 0.52, sz.y), Color(0, 0, 0, 0.62))
 	text("CHOOSE YOUR HERO", Vector2(40, 62), 44, Color(1, 0.9, 0.3), HORIZONTAL_ALIGNMENT_LEFT, -1, 10)
 	var heroes: Array = game.HEROES
-	var x := 40.0
-	for i in heroes.size():  # tabs
+	for i in heroes.size():  # tabs, two rows of four
 		var info: Dictionary = HERO_INFO[heroes[i]]
 		var chosen: bool = heroes[i] == game.hero_id
-		var w := 100.0
-		var r := Rect2(x, 86, w, 44)
+		var w := 146.0
+		var r := Rect2(40 + (i % 4) * (w + 6), 80 + (i / 4) * 42, w, 36)
 		draw_rect(r, Color(info["colour"], 0.35) if chosen else Color(0.15, 0.15, 0.2, 0.8))
 		draw_rect(r, info["colour"] if chosen else Color(0.4, 0.4, 0.5), false, 3.0 if chosen else 1.5)
-		text("%d %s" % [i + 1, info["title"]], Vector2(x + 5, 114), 12, Color.WHITE if chosen else Color(0.7, 0.7, 0.75))
-		x += w + 5
+		text("%d %s" % [i + 1, info["title"]], r.position + Vector2(8, 25), 16, Color.WHITE if chosen else Color(0.7, 0.7, 0.75))
 	var hi: Dictionary = HERO_INFO[game.hero_id]
-	text(hi["title"], Vector2(40, 200), 64, hi["colour"], HORIZONTAL_ALIGNMENT_LEFT, -1, 10)
-	text(hi["blurb"], Vector2(40, 240), 22, Color.WHITE)
-	var y := 284.0
+	text(hi["title"], Vector2(40, 218), 60, hi["colour"], HORIZONTAL_ALIGNMENT_LEFT, -1, 10)
+	text(hi["blurb"], Vector2(40, 254), 22, Color.WHITE)
+	var y := 280.0
 	for st in hi["stats"]:
 		text(st[0], Vector2(40, y + 16), 20, Color(1, 0.9, 0.45))
 		if st[1] > 5:  # off the scale
@@ -246,8 +257,8 @@ func _draw_select(sz: Vector2) -> void:
 		else:
 			for k in 5:
 				draw_rect(Rect2(150 + k * 34, y, 28, 18), hi["colour"] if k < st[1] else Color(0.25, 0.25, 0.3))
-		y += 28
-	y += 24
+		y += 26
+	y += 22
 	for row in hi["controls"]:
 		text(row[0], Vector2(40, y), 19, Color(1, 0.9, 0.45))
 		text(row[1], Vector2(250, y), 19, Color.WHITE)

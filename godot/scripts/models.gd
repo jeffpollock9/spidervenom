@@ -869,6 +869,176 @@ static func hacker() -> Dictionary:
 	return d
 
 
+# --------------------------------------------------------------------------- Santa and his reindeer
+
+const SANTA_SIZE := 0.74  # same skeleton, ~2 m
+const SANTA_RED := Color(0.8, 0.07, 0.1)
+
+
+static func reindeer(rudolph := false) -> Dictionary:
+	## A flying reindeer, facing -Z, hooves at y = 0, about 1.6 m tall at the antlers.
+	var root := Node3D.new()
+	var fur := mat(Color(0.48, 0.3, 0.16), 0.8)
+	var belly := mat(Color(0.82, 0.7, 0.55), 0.8)
+	var dark := mat(Color(0.18, 0.1, 0.05), 0.6)
+	var antler := mat(Color(0.75, 0.65, 0.48), 0.6)
+	var white := mat(Color(1, 1, 1), 0.3)
+	var black := mat(Color(0.03, 0.03, 0.03), 0.3)
+	var d := {"root": root}
+	var body := pivot(root, Vector3(0, 0.95, 0), "body")
+	d["body"] = body
+	part(body, capsule(0.28, 1.15), fur, Vector3.ZERO, Vector3(PI / 2, 0, 0))
+	_muscle(body, 0.24, belly, Vector3(0, -0.08, 0), Vector3(1.0, 0.8, 2.0))
+	part(body, sphere(0.1), white, Vector3(0, 0.1, 0.58))  # fluffy tail
+	var legs: Array[Node3D] = []
+	for z: float in [-0.38, 0.38]:
+		for side: int in [-1, 1]:
+			var hip := pivot(body, Vector3(0.16 * side, -0.1, z))
+			part(hip, capsule(0.06, 0.8), fur, Vector3(0, -0.38, 0))
+			part(hip, cylinder(0.055, 0.06, 0.1, 8), dark, Vector3(0, -0.8, 0))  # hoof
+			legs.append(hip)
+	d["legs"] = legs
+	# neck and head
+	var neck := pivot(body, Vector3(0, 0.15, -0.5), "neck")
+	part(neck, capsule(0.13, 0.6), fur, Vector3(0, 0.22, -0.08), Vector3(-0.45, 0, 0))
+	var head := pivot(neck, Vector3(0, 0.5, -0.2), "head")
+	_muscle(head, 0.15, fur, Vector3(0, 0, 0), Vector3(0.9, 0.9, 1.2))
+	_muscle(head, 0.1, belly, Vector3(0, -0.05, -0.17), Vector3(0.9, 0.8, 1.2))  # muzzle
+	var nose_mat := mat(Color(1.0, 0.08, 0.05), 0.2, 0.0, 5.0) if rudolph else black
+	part(head, sphere(0.055 if rudolph else 0.04), nose_mat, Vector3(0, -0.03, -0.3))
+	for side: int in [-1, 1]:
+		part(head, sphere(0.03), black, Vector3(0.08 * side, 0.05, -0.1))
+		part(head, sphere(0.045), fur, Vector3(0.13 * side, 0.1, 0.03), Vector3.ZERO, Vector3(0.5, 1.4, 0.8))  # ears
+		# antlers: a main beam with a few tines
+		var a := pivot(head, Vector3(0.07 * side, 0.12, 0.02))
+		a.rotation = Vector3(-0.3, 0, -0.45 * side)
+		part(a, cylinder(0.018, 0.028, 0.45, 6), antler, Vector3(0, 0.22, 0))
+		for k in 3:
+			var tine := pivot(a, Vector3(0, 0.12 + k * 0.11, 0))
+			tine.rotation = Vector3(-0.6 + k * 0.3, 0, -0.8 * side if k % 2 == 0 else 0.7 * side)
+			part(tine, cylinder(0.01, 0.018, 0.16, 5), antler, Vector3(0, 0.08, 0))
+	# a red harness with a gold bell
+	part(neck, cylinder(0.15, 0.15, 0.06, 12), mat(SANTA_RED, 0.5), Vector3(0, 0.05, 0), Vector3(0.6, 0, 0))
+	part(neck, sphere(0.05), mat(Color(1.0, 0.8, 0.2), 0.25, 0.9), Vector3(0, -0.03, -0.14))
+	return d
+
+
+static func animate_reindeer(d: Dictionary, t: float) -> void:
+	## Galloping through the air.
+	var legs: Array = d["legs"]
+	for i in legs.size():
+		var front := i < 2
+		var ph := t * 14.0 + (0.0 if front else PI) + (i % 2) * 0.4
+		(legs[i] as Node3D).rotation.x = sin(ph) * 0.7 + (-0.5 if front else 0.5)
+	(d["body"] as Node3D).position.y = 0.95 + sin(t * 28.0) * 0.05
+
+
+static func santa() -> Dictionary:
+	var root := Node3D.new()
+	root.name = "SantaModel"
+	root.scale = Vector3.ONE * SANTA_SIZE
+	var red := mat(SANTA_RED, 0.75, 0.0, 0.0, 0.2)
+	var fur := mat(Color(0.98, 0.98, 0.97), 0.95)
+	var skin := mat(Color(0.96, 0.75, 0.62), 0.6)
+	var black := mat(Color(0.05, 0.05, 0.05), 0.35)
+	var gold := mat(Color(1.0, 0.8, 0.2), 0.25, 0.9, 0.2)
+	var glove := mat(Color(0.12, 0.12, 0.12), 0.6)
+	var rosy := mat(Color(0.95, 0.45, 0.45), 0.6)
+	var d := {"root": root}
+
+	# legs: red trousers, big black boots with white fur tops
+	for side: int in [-1, 1]:
+		var s := "l" if side < 0 else "r"
+		var hip := pivot(root, Vector3(0.24 * side, 1.08, 0.0), "leg_" + s)
+		_muscle(hip, 0.22, red, Vector3(0, -0.06, 0), Vector3.ONE)
+		part(hip, capsule(0.19, 0.66), red, Vector3(0, -0.28, 0))
+		var knee := pivot(hip, Vector3(0, -0.56, 0), "shin_" + s)
+		part(knee, capsule(0.16, 0.3), red, Vector3(0, -0.05, 0))
+		part(knee, cylinder(0.19, 0.19, 0.1, 14), fur, Vector3(0, -0.2, 0))
+		part(knee, capsule(0.16, 0.36), black, Vector3(0, -0.36, 0))
+		var ankle := pivot(knee, Vector3(0, -0.5, 0), "foot_" + s)
+		_muscle(ankle, 0.14, black, Vector3(0, -0.0, -0.09), Vector3(1.0, 0.7, 1.8))
+		d["leg_" + s] = hip
+		d["shin_" + s] = knee
+
+	# torso: a big round jolly belly, belt with a gold buckle, fur down the front
+	var torso := pivot(root, Vector3(0, 1.0, 0), "torso")
+	d["torso"] = torso
+	_muscle(torso, 0.42, red, Vector3(0, 0.35, -0.06), Vector3(1.05, 1.0, 1.0))  # belly
+	part(torso, cylinder(0.43, 0.43, 0.12, 20), black, Vector3(0, 0.25, -0.06), Vector3.ZERO, Vector3(1.05, 1.0, 1.0))
+	part(torso, box(Vector3(0.18, 0.15, 0.04)), gold, Vector3(0, 0.25, -0.5))
+	part(torso, box(Vector3(0.1, 0.07, 0.05)), black, Vector3(0, 0.25, -0.505))
+	part(torso, cylinder(0.44, 0.4, 0.12, 20), fur, Vector3(0, -0.02, -0.04))  # fur hem
+	part(torso, box(Vector3(0.12, 0.62, 0.05)), fur, Vector3(0, 0.45, -0.465), Vector3(-0.1, 0, 0))
+	var chest := pivot(torso, Vector3(0, 0.8, 0), "chest")
+	d["chest"] = chest
+	_muscle(chest, 0.36, red, Vector3(0, 0.0, 0.0), Vector3(1.15, 0.8, 0.85))
+	# the sack of presents on his back
+	_muscle(chest, 0.32, mat(Color(0.55, 0.4, 0.25), 0.9), Vector3(0.05, 0.05, 0.42), Vector3(1.0, 1.25, 0.8))
+	part(chest, box(Vector3(0.14, 0.14, 0.14)), mat(Color(0.2, 0.7, 0.3), 0.5), Vector3(0.12, 0.42, 0.38), Vector3(0.3, 0.4, 0))
+	part(chest, box(Vector3(0.12, 0.12, 0.12)), mat(Color(0.3, 0.45, 0.95), 0.5), Vector3(-0.06, 0.4, 0.45), Vector3(-0.2, 0.7, 0.2))
+
+	# arms: red sleeves, fur cuffs, black gloves
+	for side: int in [-1, 1]:
+		var s := "l" if side < 0 else "r"
+		var sh := pivot(chest, Vector3(0.48 * side, 0.15, 0.0), "arm_" + s)
+		_muscle(sh, 0.18, red, Vector3(0.02 * side, 0.0, 0), Vector3.ONE)
+		part(sh, capsule(0.14, 0.6), red, Vector3(0, -0.3, 0))
+		var elbow := pivot(sh, Vector3(0, -0.58, 0), "fore_" + s)
+		part(elbow, capsule(0.13, 0.48), red, Vector3(0, -0.18, 0))
+		part(elbow, cylinder(0.15, 0.15, 0.1, 12), fur, Vector3(0, -0.4, 0))
+		var wrist := pivot(elbow, Vector3(0, -0.5, 0), "hand_" + s)
+		_muscle(wrist, 0.11, glove, Vector3(0, -0.04, 0), Vector3(1.0, 1.1, 0.8))
+		d["arm_" + s] = sh
+		d["fore_" + s] = elbow
+
+	# head: rosy cheeks, a big white beard and moustache, twinkly eyes, the hat
+	var head := pivot(chest, Vector3(0, 0.52, -0.04), "head")
+	head.scale = Vector3.ONE * 1.2
+	d["head"] = head
+	_muscle(head, 0.2, skin, Vector3(0, 0.03, 0), Vector3(0.95, 1.05, 1.0))
+	_muscle(head, 0.22, fur, Vector3(0, -0.14, -0.06), Vector3(1.0, 1.15, 0.85))  # beard
+	_muscle(head, 0.1, fur, Vector3(0, -0.32, -0.1), Vector3(1.1, 1.0, 0.8))      # beard tip
+	for side: int in [-1, 1]:
+		_muscle(head, 0.06, fur, Vector3(0.06 * side, -0.04, -0.2), Vector3(1.5, 0.6, 0.7), Vector3(0, 0, -0.3 * side))  # moustache
+		_muscle(head, 0.045, rosy, Vector3(0.11 * side, 0.0, -0.15), Vector3.ONE)  # rosy cheeks
+		part(head, sphere(0.022), black, Vector3(0.065 * side, 0.07, -0.18))
+		part(head, sphere(0.008), mat(Color(1, 1, 1), 0.2, 0.0, 1.0), Vector3(0.06 * side, 0.078, -0.198))  # twinkle
+		part(head, capsule(0.012, 0.07), fur, Vector3(0.067 * side, 0.115, -0.18), Vector3(0, 0, PI / 2))  # white eyebrows
+	_muscle(head, 0.04, rosy, Vector3(0, 0.02, -0.2), Vector3.ONE)  # nose
+	# the hat: fur band, red cone flopping over, white pompom
+	part(head, cylinder(0.22, 0.22, 0.08, 18), fur, Vector3(0, 0.17, 0))
+	var hat := pivot(head, Vector3(0, 0.2, 0))
+	part(hat, cylinder(0.04, 0.2, 0.32, 14), red, Vector3(0, 0.15, 0.03), Vector3(0.3, 0, 0))
+	part(hat, sphere(0.06), fur, Vector3(0, 0.29, 0.13))
+
+	# the sleigh with two reindeer, only there while he flies
+	var sleigh := pivot(root, Vector3(0, 0.3, 0), "sleigh")
+	var wood := mat(SANTA_RED, 0.4, 0.2)
+	part(sleigh, box(Vector3(1.2, 0.5, 1.6)), wood, Vector3(0, 0.15, 0.1))
+	part(sleigh, box(Vector3(1.25, 0.6, 0.15)), wood, Vector3(0, 0.45, 0.85))  # seat back
+	part(sleigh, box(Vector3(1.3, 0.08, 0.1)), gold, Vector3(0, 0.42, -0.7))
+	for side: int in [-1, 1]:
+		part(sleigh, box(Vector3(0.06, 0.06, 2.2)), gold, Vector3(0.55 * side, -0.25, 0))  # runners
+		part(sleigh, cylinder(0.12, 0.12, 0.06, 12), gold, Vector3(0.55 * side, -0.13, -1.1), Vector3(0, 0, PI / 2))
+		for k in 3:
+			part(sleigh, cylinder(0.02, 0.02, 0.35, 5), gold, Vector3(0.55 * side, -0.1, -0.6 + k * 0.6))
+	var team: Array = []
+	for k in 2:
+		var deer := reindeer(k == 0)
+		var rd: Node3D = deer["root"]
+		rd.position = Vector3(0, -0.3, -2.3 - k * 1.7)
+		rd.scale = Vector3.ONE * 1.2
+		sleigh.add_child(rd)
+		team.append(deer)
+		part(sleigh, cylinder(0.015, 0.015, 1.7, 4), mat(Color(0.3, 0.2, 0.1), 0.6), Vector3(0.2, 0.7, -1.5 - k * 1.7),
+			Vector3(PI / 2, 0, 0))
+	sleigh.visible = false
+	d["sleigh"] = sleigh
+	d["team"] = team
+	return d
+
+
 static func web_cocoon(r: float, h: float) -> Node3D:
 	## A white web wrapping round a stuck enemy.
 	var n := Node3D.new()

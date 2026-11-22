@@ -32,7 +32,7 @@ You can also jump on enemies' heads to squash them.
 
 ## SpiderVenomn 3D (new, work in progress)
 
-A third-person 3D version made with [Godot 4](https://godotengine.org). Pick **Venom**, **Spider-Man**, **Jamie's Dad**, **Jamie**, **Charley** or the **Hacker** and save **Supercity** from **Mr Poo**.
+A third-person 3D version made with [Godot 4](https://godotengine.org). Pick **Venom**, **Spider-Man**, **Jamie's Dad**, **Jamie**, **Charley**, the **Hacker** or **Santa** and save **Supercity** from **Mr Poo**.
 
 ```bash
 ./run3d.sh     # downloads Godot 4.7.2 the first time (about 60 MB), then plays
@@ -40,7 +40,7 @@ A third-person 3D version made with [Godot 4](https://godotengine.org). Pick **V
 
 `./install.sh` also adds **SpiderVenomn 3D** to your app menu. After that, `git pull` is all you need for updates.
 
-After the title screen you choose your hero (A/D or 1-6, then Space). Press **H** on the pause or end screen to change hero.
+After the title screen you choose your hero (A/D or 1-7, then Space). Press **H** on the pause or end screen to change hero.
 
 Controls for both heroes:
 
@@ -49,7 +49,7 @@ Controls for both heroes:
 | W A S D | Run (relative to the camera) |
 | Mouse | Look around and aim (crosshair) |
 | Left click (J) | Punch |
-| Shift (hold) | Swing: aim at a skyscraper (or up at the sky). Jamie's Dad sprints instead, Jamie uses his jetpack, Charley hides, the Hacker glitches forward |
+| Shift (hold) | Swing: aim at a skyscraper (or up at the sky). Jamie's Dad sprints instead, Jamie uses his jetpack, Charley hides, the Hacker glitches forward, Santa says HO HO HO |
 | Esc | Pause (R restart, H change hero, Q quit) |
 | F11 / M | Fullscreen / music on-off |
 
@@ -85,6 +85,14 @@ The **Hacker** can hack:
 - **Left click: zap.** Electricity from his laptop hits the nearest robot in front and jumps to a second one.
 - **Shift: glitch** 7 metres forward in an instant (not through walls).
 - **F (full energy): system hack.** Every robot nearby is hacked onto your side at once, the mini-poos get deleted, and Mr Poo crashes ("MR_POO.EXE HAS STOPPED WORKING"): he loses 15% of his health and freezes for 4 seconds.
+
+**Santa**'s reindeer come and defeat the enemies:
+
+- **Right click: call a reindeer.** It swoops down out of the sky behind him, lands, charges along the ground at the robot you're pointing at, flattens it and anything else in its way, gallops on through and flies off. Each one has its name over its head (Dasher, Dancer, Prancer, Vixen, Comet, Cupid, Donner, Blitzen and Rudolph, with his glowing red nose).
+- **Space in mid-air: sleigh ride.** The sleigh appears with two reindeer pulling it and he flies about (Space up, Ctrl down). It goes away when he lands.
+- **Left click:** throws a present that bursts open and hurts everything near where it lands.
+- **Shift: HO HO HO!** Such a jolly laugh that the robots nearby stop for a couple of seconds to listen.
+- **F (full energy): reindeer stampede.** All nine reindeer charge in, one for every robot nearby (spare ones go for Mr Poo). Every robot is knocked out.
 
 Run down the avenue between the skyscrapers. Ride the yellow sky-lifts over the two broken bits of road, or swing or fly across. Falling in costs 15 health. At the end of the street is a plaza. When you go in, the gate shuts behind you and Mr Poo wakes up. He hops at you and lobs poo that leaves slippery puddles. At half health he gets angry: he throws more poo, his landings send out shockwaves you have to jump over, and he spawns mini-poos.
 

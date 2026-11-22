@@ -84,6 +84,12 @@ func web(secs: float) -> void:
 	cocoon.visible = true
 
 
+func daze(secs: float) -> void:
+	## Stops what it's doing for a moment (no web).
+	if not dead and hacked_t <= 0.0:
+		stun_t = max(stun_t, secs)
+
+
 func hackable() -> bool:
 	return kind != "minipoo"  # you can't hack a poo
 

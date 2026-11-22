@@ -14,6 +14,7 @@ var knock := 8.0
 var pierce := false
 var web_secs := 0.0
 var homing := false
+var splash := 0.0
 var dead := false
 var age := 0.0
 var hit_ids := {}
@@ -33,6 +34,7 @@ func setup(g, pos: Vector3, v: Vector3, side: String, k: String, dmg: float, r: 
 	pierce = opts.get("pierce", false)
 	web_secs = opts.get("web", 0.0)
 	homing = opts.get("homing", false)
+	splash = opts.get("splash", 0.0)
 	match kind:
 		"symbiote":
 			var black := Models.mat(Models.VENOM_BLACK, 0.2, 0.3, 0.0, 0.8)
@@ -49,6 +51,13 @@ func setup(g, pos: Vector3, v: Vector3, side: String, k: String, dmg: float, r: 
 					Vector3(cos(a), sin(a), 0) * r * 0.6 + Vector3(0, 0, r * 1.2))
 				mi.rotation = Vector3(PI / 2 + sin(a) * 0.35, 0, 0)
 				mi.rotation.y = -cos(a) * 0.35
+		"present":
+			var colours := [Color(0.2, 0.7, 0.3), Color(0.3, 0.45, 0.95), Color(0.95, 0.8, 0.2), Color(0.8, 0.2, 0.7)]
+			Models.part(self, Models.box(Vector3.ONE * r * 1.6), Models.mat(colours[randi() % colours.size()], 0.5))
+			var ribbon := Models.mat(Color(0.9, 0.1, 0.1), 0.4)
+			Models.part(self, Models.box(Vector3(r * 1.7, r * 1.7, r * 0.35)), ribbon)
+			Models.part(self, Models.box(Vector3(r * 0.35, r * 1.7, r * 1.7)), ribbon)
+			Models.part(self, Models.sphere(r * 0.35, 8), ribbon, Vector3(0, r * 0.9, 0), Vector3.ZERO, Vector3(1.6, 0.8, 1.0))
 		"sock":
 			var white := Models.mat(Color(0.97, 0.97, 0.97), 0.8)
 			Models.part(self, Models.capsule(r * 0.6, r * 3.0), white, Vector3.ZERO, Vector3(PI / 2, 0, 0))
@@ -144,6 +153,12 @@ func kill(hit_ground: bool) -> void:
 	if dead:
 		return
 	dead = true
+	if splash > 0.0 and owner_side == "player":  # a present bursts open
+		for e in game.targets():
+			if not hit_ids.has(e.get_instance_id()) and position.distance_to(e.center()) < splash + e.radius:
+				e.hurt(damage * 0.6, e.center() - position, knock)
+		game.burst(position, Color(1.0, 0.85, 0.3), 14, 7.0)
+		game.burst(position, Color(0.9, 0.15, 0.15), 10, 6.0)
 	match kind:
 		"poo":
 			game.burst(position, Color(0.45, 0.28, 0.12), 10, 6.0)
