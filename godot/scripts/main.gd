@@ -1,11 +1,12 @@
 extends Node3D
-## SpiderVenomn 3D: pick a hero (Venom, Spider-Man, Jamie's Dad or Jamie) and save Supercity from Mr Poo.
+## SpiderVenomn 3D: pick a hero (Venom, Spider-Man, Jamie's Dad, Jamie or Charley) and save
+## Supercity from Mr Poo.
 ## Owns the level, the hero, enemies, projectiles and effects, and runs the game states.
 
 var audio: GameAudio
 var level: LevelSupercity
 var world: Node3D
-const HEROES := ["venom", "spiderman", "jamiesdad", "jamie"]
+const HEROES := ["venom", "spiderman", "jamiesdad", "jamie", "charley"]
 
 var player: Hero
 var hero_id := "venom"
@@ -100,6 +101,8 @@ static func make_hero(id: String, g) -> Hero:
 			return JamiesDad.new(g)
 		"jamie":
 			return Jamie.new(g)
+		"charley":
+			return Charley.new(g)
 	return Venom.new(g)
 
 
@@ -591,7 +594,7 @@ func _update_hazards(dt: float) -> void:
 
 
 func _contact_damage() -> void:
-	if player.dead or state != "play":
+	if player.dead or state != "play" or player.hiding:
 		return
 	var pc := player.center()
 	var feet := player.global_position

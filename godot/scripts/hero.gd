@@ -32,7 +32,8 @@ var sprint_speed := 30.0
 var can_pound := false             # CTRL in mid-air slams down
 var regen := 0.0
 var invincible := false            # nothing can hurt him
-var can_jetpack := false           # SHIFT (hold) is a jetpack                   # health per second, once he's gone a while without a hit
+var can_jetpack := false           # SHIFT (hold) is a jetpack
+var can_hide := false              # SHIFT (hold) hides: robots stop bothering with him                   # health per second, once he's gone a while without a hit
 var ult_ready_text := "F: ULTIMATE READY!"
 var hint := ""
 var rope_radius := 0.12
@@ -75,6 +76,7 @@ var pounding := false
 var hurt_t := 99.0
 var ram_cd := 0.0
 var jetting := false
+var hiding := false
 
 
 func _init(g) -> void:
@@ -148,8 +150,13 @@ func info_line() -> String:
 
 # ------------------------------------------------------------------ update
 
+func _pre_tick(_ctl: Controls, _dt: float) -> void:
+	pass  # hero-specific per-frame stuff before moving (e.g. Charley getting puffed out)
+
+
 func tick(ctl: Controls, dt: float) -> void:
 	t += dt
+	_pre_tick(ctl, dt)
 	invuln = max(0.0, invuln - dt)
 	cd = max(0.0, cd - dt)
 	punch_t = max(0.0, punch_t - dt)
@@ -167,7 +174,12 @@ func tick(ctl: Controls, dt: float) -> void:
 	if wish.length() > 1.0:
 		wish = wish.normalized()
 
-	if can_jetpack:
+	# SHIFT: each hero uses it for one thing
+	if can_hide:
+		hiding = ctl.alt_held and is_on_floor() and not dead
+		if hiding:
+			wish = Vector3.ZERO
+	elif can_jetpack:
 		var was_jet := jetting
 		jetting = ctl.alt_held and energy > 1.0
 		if jetting and not was_jet:
@@ -403,7 +415,7 @@ func swing_move(ctl: Controls, wish: Vector3, dt: float) -> void:
 	air_jumps_left = air_jumps
 
 
-func punch() -> void:
+func punch() -> int:
 	_face_aim()
 	cd = punch_cd
 	punch_t = min(0.3, punch_cd * 0.75)
@@ -416,6 +428,7 @@ func punch() -> void:
 			e.hurt(punch_damage, fwd, punch_knock)
 			hits += 1
 	game.audio.play("hit" if hits else "punch")
+	return hits
 
 
 func special() -> void:

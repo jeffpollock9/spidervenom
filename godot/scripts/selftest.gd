@@ -78,6 +78,10 @@ func run() -> void:
 		await spiderman_tests()
 		_finish(t0)
 		return
+	if OS.get_cmdline_user_args().has("--charley-only"):
+		await charley_tests()
+		_finish(t0)
+		return
 	if OS.get_cmdline_user_args().has("--jamie-only"):
 		await jamie_tests()
 		_finish(t0)
@@ -320,6 +324,7 @@ func run() -> void:
 	await spiderman_tests()
 	await dad_tests()
 	await jamie_tests()
+	await charley_tests()
 	_finish(t0)
 
 
@@ -350,10 +355,12 @@ func spiderman_tests() -> void:
 	game.choose_hero(1)
 	check(game.player is Jamie, "hero select picks Jamie")
 	game.choose_hero(1)
+	check(game.player is Charley, "hero select picks Charley")
+	game.choose_hero(1)
 	check(game.player is Venom, "hero select wraps round to Venom")
 	game.choose_hero(-1)
-	check(game.player is Jamie, "hero select wraps backwards to Jamie")
-	game.choose_hero(-2)
+	check(game.player is Charley, "hero select wraps backwards to Charley")
+	game.choose_hero(-3)
 	check(game.player is Spiderman, "hero select goes backwards too")
 	game.start_play()
 
@@ -836,3 +843,155 @@ func jamie_tests() -> void:
 	cur = Controls.new()
 	await frames(220)
 	check(game.finished == "won", "Jamie saves Supercity (%s)" % game.finished)
+
+
+func charley_tests() -> void:
+	print("  --- Charley")
+	game.state = "title"
+	game.hero_id = "charley"
+	game.new_game()
+	game.open_select()
+	await frames(40)
+	await shot("charley_select")
+	if shots_dir != "":
+		game.rig.height = 1.45
+		game.rig.pitch = 0.0
+		game.rig.shoulder = 0.0
+		game.rig.arm.spring_length = 1.3
+		await frames(5)
+		await shot("charley_face")
+	game.start_play()
+
+	# --- slow, wee jumps, and he gets puffed out
+	var p := await fresh()
+	clear_enemies()
+	check(p is Charley and p.max_hp <= 30.0, "playing as Charley (%d hp)" % p.max_hp)
+	var x0 := p.global_position.x
+	cur.move = Vector2(0, 1)
+	await frames(60)
+	var run := p.global_position.x - x0
+	check(run < 7.0, "he's slow (%.1f m in a second)" % run)
+	var puffed := false
+	for i in 60 * 5:
+		await frames(1)
+		if p.puffed_t > 0.0:
+			puffed = true
+			break
+	check(puffed, "running for a few seconds puffs him out")
+	x0 = p.global_position.x
+	await frames(60)
+	check(p.global_position.x - x0 < 3.5, "puffed out he can barely walk (%.1f m)" % (p.global_position.x - x0))
+	await shot("charley_puffed")
+	cur = Controls.new()
+	await frames(200)
+	var y0 := p.global_position.y
+	cur.jump_pressed = true
+	cur.jump_held = true
+	var top := y0
+	for i in 40:
+		await frames(1)
+		top = max(top, p.global_position.y)
+	check(top - y0 < 1.6, "only a wee jump (%.1f m)" % (top - y0))
+	cur = Controls.new()
+	await frames(30)
+
+	# --- his punches only tickle
+	p = await fresh()
+	clear_enemies()
+	var foe: Enemy = game.spawn_enemy("walker", p.global_position + Vector3(1.4, 0.3, 0))
+	await frames(3)
+	var punches := 0
+	for f in 200:
+		if not is_instance_valid(foe) or foe.dead:
+			break
+		cur.aim_override = foe.center()
+		var gap := foe.global_position - p.global_position
+		game.rig.face_dir(Vector3(gap.x, 0, gap.z).normalized())
+		cur.move = Vector2(0, 1) if Vector2(gap.x, gap.z).length() > 1.2 else Vector2.ZERO
+		cur.primary_pressed = Vector2(gap.x, gap.z).length() < 1.8 and p.cd <= 0.0
+		punches += int(cur.primary_pressed)
+		p.hp = p.max_hp
+		await frames(1)
+	check(is_instance_valid(foe) and not foe.dead and foe.hp < foe.max_hp and foe.hp > foe.max_hp - 25,
+		"%d punches barely tickle a robot (hp %d/%d)" % [punches, foe.hp if is_instance_valid(foe) else 0, foe.max_hp if is_instance_valid(foe) else 0])
+	cur = Controls.new()
+
+	# --- hiding: the robots stop bothering with him
+	p = await fresh()
+	clear_enemies()
+	var walker: Enemy = game.spawn_enemy("walker", p.global_position + Vector3(8, 0.3, 0))
+	var shooter: Enemy = game.spawn_enemy("shooter", p.global_position + Vector3(12, 0.3, 5))
+	cur.alt_held = true
+	await frames(5)
+	check(p.hiding, "SHIFT hides")
+	await shot("charley_hide")
+	var hp0 := p.hp
+	var shots := 0
+	var wd0 := walker.global_position.distance_to(p.global_position)
+	for i in 60 * 4:
+		await frames(1)
+		for pr in game.projectiles:
+			if is_instance_valid(pr) and pr.kind == "bolt":
+				shots += 1
+	check(shots == 0 and p.hp == hp0 and walker.global_position.distance_to(p.global_position) > 1.5,
+		"robots don't chase or shoot him while he hides (shots %d, walker %.1f -> %.1f m)" % [shots, wd0, walker.global_position.distance_to(p.global_position)])
+	cur = Controls.new()
+
+	# --- he goes down easily
+	p = await fresh()
+	clear_enemies()
+	p.take_damage(9.0, p.global_position + Vector3.RIGHT)
+	await frames(60)
+	p.take_damage(12.0, p.global_position + Vector3.RIGHT)
+	await frames(60)
+	p.take_damage(12.0, p.global_position + Vector3.RIGHT)
+	await frames(160)
+	check(game.finished == "lost", "three hits and he's done (%s)" % game.finished)
+
+	# --- CALL FOR HELP: Jamie's Dad drops in and smashes everything
+	p = await fresh()
+	clear_enemies()
+	var foes: Array = []
+	for k in 5:
+		foes.append(game.spawn_enemy("walker", p.global_position + Vector3(10 + k * 5, 0.3, -6 + k * 3)))
+	await frames(3)
+	p.energy = 100.0
+	cur.ult_pressed = true
+	await frames(12)
+	await shot("charley_help_falling")
+	var helped := false
+	for i in 60:
+		await frames(1)
+		if p.helper_landed:
+			helped = true
+			break
+	await frames(4)
+	await shot("charley_help")
+	var smashed := 0
+	for e in foes:
+		if not is_instance_valid(e) or e.dead:
+			smashed += 1
+	check(helped and smashed == 5, "Jamie's Dad drops in and smashes every robot (%d/5)" % smashed)
+	cur = Controls.new()
+	await frames(120)
+	check(p.helper == null, "and then he goes home")
+
+	# --- Charley can still beat Mr Poo, with a lot of help
+	p = await fresh()
+	clear_enemies()
+	p.global_position = Vector3(275, 0.3, 0)
+	await frames(150)
+	var boss: MrPoo = game.boss
+	var calls := 0
+	for f in 60 * 60:
+		if not is_instance_valid(boss) or boss.dead:
+			break
+		p.hp = p.max_hp
+		if p.energy >= 100.0 and (p.helper == null):
+			cur.ult_pressed = true
+			calls += 1
+		await frames(1)
+	check(not is_instance_valid(boss) or boss.dead, "calling for help %d times beats Mr Poo" % calls)
+	cur = Controls.new()
+	await frames(220)
+	check(game.finished == "won", "Charley saves Supercity (%s)" % game.finished)

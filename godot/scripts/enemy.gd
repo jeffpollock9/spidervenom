@@ -95,7 +95,7 @@ func tick(dt: float) -> void:
 	var to: Vector3 = player.global_position - global_position
 	var flat := Vector3(to.x, 0, to.z)
 	var dist := flat.length()
-	var can_see: bool = not player.dead
+	var can_see: bool = not player.dead and not player.hiding
 	var h := Vector2(velocity.x, velocity.z)
 	var k := kind
 	if stun_t > 0.0:
@@ -111,7 +111,8 @@ func tick(dt: float) -> void:
 				dir = flat.normalized()
 			if is_on_floor() and flash <= 0.0:
 				var spd := 5.0 if chase else 2.5
-				if not chase and (is_on_wall() or not _ground_ahead()):
+				var bump: bool = player.hiding and dist < 2.5 and dir.dot(flat) > 0.0  # walks into a hiding Charley without noticing
+				if not chase and (is_on_wall() or not _ground_ahead() or bump):
 					dir = -dir
 				if chase and not _ground_ahead():
 					spd = 0.0

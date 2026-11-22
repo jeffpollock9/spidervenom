@@ -676,6 +676,104 @@ static func jamie() -> Dictionary:
 	return d
 
 
+# --------------------------------------------------------------------------- Charley
+
+const CHARLEY_SIZE := 0.58  # same skeleton, scaled to a wee ~1.55 m
+
+
+static func charley() -> Dictionary:
+	var root := Node3D.new()
+	root.name = "CharleyModel"
+	root.scale = Vector3.ONE * CHARLEY_SIZE
+	var skin := mat(Color(0.93, 0.7, 0.56), 0.65)
+	var tee := mat(Color(1.0, 0.85, 0.25), 0.8)
+	var shorts := mat(Color(0.35, 0.5, 0.3), 0.85)
+	var sock := mat(Color(0.97, 0.97, 0.97), 0.8)
+	var shoe := mat(Color(0.25, 0.35, 0.8), 0.5)
+	var cap := mat(Color(0.85, 0.15, 0.15), 0.6)
+	var hair := mat(Color(0.85, 0.45, 0.15), 0.6)
+	var white := mat(Color(1, 1, 1), 0.3)
+	var dark := mat(Color(0.08, 0.06, 0.05), 0.4)
+	var pink := mat(Color(0.9, 0.5, 0.5), 0.6)
+	var freckle := mat(Color(0.8, 0.5, 0.35), 0.7)
+	var d := {"root": root}
+
+	# legs: skinny, knobbly knees, baggy shorts, socks pulled up, big trainers
+	for side: int in [-1, 1]:
+		var s := "l" if side < 0 else "r"
+		var hip := pivot(root, Vector3(0.17 * side, 1.08, 0.0), "leg_" + s)
+		part(hip, cylinder(0.17, 0.2, 0.42, 14), shorts, Vector3(0, -0.14, 0))
+		part(hip, capsule(0.065, 0.6), skin, Vector3(0, -0.3, 0))
+		var knee := pivot(hip, Vector3(0, -0.56, 0), "shin_" + s)
+		_muscle(knee, 0.085, skin, Vector3.ZERO, Vector3.ONE)  # knobbly knee
+		part(knee, capsule(0.06, 0.5), skin, Vector3(0, -0.22, 0))
+		part(knee, cylinder(0.07, 0.07, 0.2, 10), sock, Vector3(0, -0.38, 0))
+		var ankle := pivot(knee, Vector3(0, -0.5, 0), "foot_" + s)
+		_muscle(ankle, 0.12, shoe, Vector3(0, -0.01, -0.08), Vector3(1.0, 0.7, 2.0))
+		d["leg_" + s] = hip
+		d["shin_" + s] = knee
+
+	# torso: a skinny chest lost in a baggy t-shirt that's far too big for him
+	var torso := pivot(root, Vector3(0, 1.0, 0), "torso")
+	d["torso"] = torso
+	part(torso, cylinder(0.26, 0.3, 0.75, 16), tee, Vector3(0, 0.38, 0), Vector3.ZERO, Vector3(1.0, 1.0, 0.8))
+	var chest := pivot(torso, Vector3(0, 0.78, 0), "chest")
+	d["chest"] = chest
+	_muscle(chest, 0.27, tee, Vector3(0, -0.02, 0.0), Vector3(1.0, 0.75, 0.78))
+	part(chest, capsule(0.06, 0.3), skin, Vector3(0, 0.25, -0.01))  # thin neck
+	part(chest, box(Vector3(0.12, 0.12, 0.02)), mat(Color(0.3, 0.6, 1.0), 0.6), Vector3(0.0, 0.0, -0.22))  # a wee picture on his tee
+
+	# arms: noodle arms in floppy sleeves
+	for side: int in [-1, 1]:
+		var s := "l" if side < 0 else "r"
+		var sh := pivot(chest, Vector3(0.31 * side, 0.1, 0.0), "arm_" + s)
+		part(sh, cylinder(0.1, 0.13, 0.3, 12), tee, Vector3(0.02 * side, -0.1, 0))
+		part(sh, capsule(0.05, 0.6), skin, Vector3(0, -0.3, 0))
+		var elbow := pivot(sh, Vector3(0, -0.58, 0), "fore_" + s)
+		_muscle(elbow, 0.055, skin, Vector3.ZERO, Vector3.ONE)  # pointy elbow
+		part(elbow, capsule(0.045, 0.5), skin, Vector3(0, -0.24, 0))
+		var wrist := pivot(elbow, Vector3(0, -0.5, 0), "hand_" + s)
+		_muscle(wrist, 0.065, skin, Vector3(0, -0.04, 0), Vector3(1.0, 1.1, 0.7))
+		d["arm_" + s] = sh
+		d["fore_" + s] = elbow
+
+	# head: round face, worried eyebrows, a little "o" mouth, freckles, cap on backwards
+	var head := pivot(chest, Vector3(0, 0.55, -0.03), "head")
+	head.scale = Vector3.ONE * 1.3
+	d["head"] = head
+	_muscle(head, 0.21, skin, Vector3(0, 0.02, 0), Vector3(1.0, 1.05, 1.0))
+	for side: int in [-1, 1]:
+		_muscle(head, 0.05, skin, Vector3(0.21 * side, 0.01, 0.0), Vector3(0.45, 1.0, 0.8))  # sticky-out ears
+		part(head, sphere(0.04), white, Vector3(0.075 * side, 0.04, -0.18), Vector3.ZERO, Vector3(1.0, 1.15, 0.6))
+		part(head, sphere(0.018), dark, Vector3(0.075 * side, 0.035, -0.205))
+		part(head, capsule(0.009, 0.07), hair, Vector3(0.075 * side, 0.1, -0.19),
+			Vector3(0, 0, PI / 2 + 0.4 * side))  # worried eyebrows
+		for k in 3:
+			part(head, sphere(0.008, 6), freckle, Vector3((0.07 + k * 0.022) * side, -0.025 - (k % 2) * 0.015, -0.19))
+		part(head, sphere(0.022), pink, Vector3(0.11 * side, -0.04, -0.17), Vector3.ZERO, Vector3(1.4, 0.8, 0.5))  # rosy cheeks
+	_muscle(head, 0.022, skin, Vector3(0, -0.005, -0.21), Vector3.ONE)  # button nose
+	var mouth := pivot(head, Vector3(0, -0.085, -0.192), "mouth")
+	var ring := TorusMesh.new()
+	ring.inner_radius = 0.012
+	ring.outer_radius = 0.022
+	part(mouth, ring, mat(Color(0.55, 0.2, 0.2), 0.5), Vector3.ZERO, Vector3(PI / 2, 0, 0))
+	d["mouth"] = mouth
+	# ginger hair poking out under a cap worn backwards
+	_muscle(head, 0.205, hair, Vector3(0, 0.06, 0.03), Vector3(1.04, 0.85, 1.04))
+	_muscle(head, 0.2, cap, Vector3(0, 0.15, 0.01), Vector3(1.04, 0.62, 1.04))
+	part(head, cylinder(0.15, 0.15, 0.02, 16), cap, Vector3(0, 0.15, 0.2), Vector3(0.2, 0, 0), Vector3(0.9, 1.0, 0.7))  # peak at the back
+	for side: int in [-1, 1]:  # ginger tufts sticking out at the sides
+		part(head, capsule(0.02, 0.09), hair, Vector3(0.19 * side, 0.09, -0.04), Vector3(0, 0, 0.9 * side))
+	# beads of sweat when he's puffed out
+	var sweat := pivot(head, Vector3(0, 0, 0), "sweat")
+	for side: int in [-1, 1]:
+		part(sweat, sphere(0.02, 8), mat(Color(0.6, 0.85, 1.0), 0.1, 0.0, 0.5), Vector3(0.2 * side, 0.12, -0.08),
+			Vector3.ZERO, Vector3(1, 1.6, 1))
+	sweat.visible = false
+	d["sweat"] = sweat
+	return d
+
+
 static func web_cocoon(r: float, h: float) -> Node3D:
 	## A white web wrapping round a stuck enemy.
 	var n := Node3D.new()

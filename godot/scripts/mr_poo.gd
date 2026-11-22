@@ -102,6 +102,8 @@ func tick(dt: float) -> void:
 		stun_t -= dt
 		if stun_t <= 0.0 and cocoon:
 			cocoon.visible = false
+	elif active and not dead and player.hiding and state != "hop":
+		pass  # where did he go? (Charley is hiding)
 	elif active and not dead:
 		timer -= dt * speed
 		_think(player, flat, speed)

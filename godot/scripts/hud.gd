@@ -64,6 +64,19 @@ const HERO_INFO := {
 			["F (full energy)", "GENIUS HACK: every robot nearby shuts down and blows up"],
 		],
 	},
+	"charley": {
+		"title": "CHARLEY",
+		"blurb": "Really, really weak. But very good at calling for help.",
+		"colour": Color(1.0, 0.85, 0.3),
+		"stats": [["POWER", 0], ["SPEED", 1], ["HEALTH", 1], ["SMART", 3], ["LOOKS", 3]],
+		"controls": [
+			["LEFT CLICK (J)", "Punch. It tickles."],
+			["RIGHT CLICK (K)", "Throw a sock"],
+			["RUNNING", "Gets puffed out after a few seconds"],
+			["SHIFT (hold)", "HIDE: robots stop bothering with him"],
+			["F (full energy)", "CALL FOR HELP: Jamie's Dad drops in and smashes everything"],
+		],
+	},
 }
 
 var game
@@ -184,7 +197,7 @@ func _draw_title(sz: Vector2) -> void:
 	_outline_white("VENOMN", Vector2(sz.x / 2 + 8, 130), 110)
 	text("3D", Vector2(sz.x / 2, 200), 60, Color(1, 0.9, 0.3), HORIZONTAL_ALIGNMENT_CENTER, -1, 10)
 	text("Save Supercity from Mr Poo!", Vector2(sz.x / 2, 250), 30, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	text("Play as VENOM, SPIDER-MAN, JAMIE'S DAD or JAMIE", Vector2(sz.x / 2, 330), 30, Color(1, 0.9, 0.45), HORIZONTAL_ALIGNMENT_CENTER)
+	text("Play as VENOM, SPIDER-MAN, JAMIE'S DAD, JAMIE or CHARLEY", Vector2(sz.x / 2, 330), 30, Color(1, 0.9, 0.45), HORIZONTAL_ALIGNMENT_CENTER)
 	var y := 400.0
 	for row in COMMON:
 		text(row[0], Vector2(sz.x / 2 - 30, y), 22, Color(1, 0.9, 0.45), HORIZONTAL_ALIGNMENT_RIGHT)
@@ -204,12 +217,12 @@ func _draw_select(sz: Vector2) -> void:
 	for i in heroes.size():  # tabs
 		var info: Dictionary = HERO_INFO[heroes[i]]
 		var chosen: bool = heroes[i] == game.hero_id
-		var w := 146.0
+		var w := 118.0
 		var r := Rect2(x, 86, w, 44)
 		draw_rect(r, Color(info["colour"], 0.35) if chosen else Color(0.15, 0.15, 0.2, 0.8))
 		draw_rect(r, info["colour"] if chosen else Color(0.4, 0.4, 0.5), false, 3.0 if chosen else 1.5)
-		text("%d %s" % [i + 1, info["title"]], Vector2(x + 8, 116), 17, Color.WHITE if chosen else Color(0.7, 0.7, 0.75))
-		x += w + 8
+		text("%d %s" % [i + 1, info["title"]], Vector2(x + 6, 115), 14, Color.WHITE if chosen else Color(0.7, 0.7, 0.75))
+		x += w + 6
 	var hi: Dictionary = HERO_INFO[game.hero_id]
 	text(hi["title"], Vector2(40, 200), 64, hi["colour"], HORIZONTAL_ALIGNMENT_LEFT, -1, 10)
 	text(hi["blurb"], Vector2(40, 240), 22, Color.WHITE)

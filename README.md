@@ -32,7 +32,7 @@ You can also jump on enemies' heads to squash them.
 
 ## SpiderVenomn 3D (new, work in progress)
 
-A third-person 3D version made with [Godot 4](https://godotengine.org). Pick **Venom**, **Spider-Man**, **Jamie's Dad** or **Jamie** and save **Supercity** from **Mr Poo**.
+A third-person 3D version made with [Godot 4](https://godotengine.org). Pick **Venom**, **Spider-Man**, **Jamie's Dad**, **Jamie** or **Charley** and save **Supercity** from **Mr Poo**.
 
 ```bash
 ./run3d.sh     # downloads Godot 4.7.2 the first time (about 60 MB), then plays
@@ -40,7 +40,7 @@ A third-person 3D version made with [Godot 4](https://godotengine.org). Pick **V
 
 `./install.sh` also adds **SpiderVenomn 3D** to your app menu. After that, `git pull` is all you need for updates.
 
-After the title screen you choose your hero (A/D or 1-4, then Space). Press **H** on the pause or end screen to change hero.
+After the title screen you choose your hero (A/D or 1-5, then Space). Press **H** on the pause or end screen to change hero.
 
 Controls for both heroes:
 
@@ -49,7 +49,7 @@ Controls for both heroes:
 | W A S D | Run (relative to the camera) |
 | Mouse | Look around and aim (crosshair) |
 | Left click (J) | Punch |
-| Shift (hold) | Swing: aim at a skyscraper (or up at the sky). Jamie's Dad sprints instead, Jamie uses his jetpack |
+| Shift (hold) | Swing: aim at a skyscraper (or up at the sky). Jamie's Dad sprints instead, Jamie uses his jetpack, Charley hides |
 | Esc | Pause (R restart, H change hero, Q quit) |
 | F11 / M | Fullscreen / music on-off |
 
@@ -69,6 +69,15 @@ Controls for both heroes:
 - **Smart:** he built his own gadgets. **Shift (hold)** fires up his jetpack (it uses energy, about 8 seconds on a full bar). **Right click** fires a smart shot that steers itself into the nearest robot.
 - **Strong:** **left click** is a punch that nearly knocks a robot out in one go.
 - **F (full energy): Genius hack.** Every robot nearby is hacked, shuts down and blows up. Mr Poo loses a fifth of his health and freezes for 3 seconds.
+
+**Charley** is really, really weak:
+
+- 30 health (two or three hits and he's done), slow, and only a wee jump.
+- **Left click:** a punch that does 3 damage. "tickle!"
+- **Right click:** throws a sock. It does 2 damage.
+- Run for a few seconds and he gets **puffed out**: he bends over panting and can barely walk until he gets his breath back.
+- **Shift (hold): hide.** He crouches down with his hands over his eyes. Robots stop chasing and shooting him, walk right past, and Mr Poo can't find him. He can't do anything else while he's hiding, mind.
+- **F (full energy): call for help.** Jamie's Dad drops out of the sky next to him and does a Dad Smash: every robot nearby is knocked out and Mr Poo loses a quarter of his health. That's how Charley wins.
 
 Run down the avenue between the skyscrapers. Ride the yellow sky-lifts over the two broken bits of road, or swing or fly across. Falling in costs 15 health. At the end of the street is a plaza. When you go in, the gate shuts behind you and Mr Poo wakes up. He hops at you and lobs poo that leaves slippery puddles. At half health he gets angry: he throws more poo, his landings send out shockwaves you have to jump over, and he spawns mini-poos.
 

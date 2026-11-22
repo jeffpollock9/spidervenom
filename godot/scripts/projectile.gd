@@ -49,6 +49,12 @@ func setup(g, pos: Vector3, v: Vector3, side: String, k: String, dmg: float, r: 
 					Vector3(cos(a), sin(a), 0) * r * 0.6 + Vector3(0, 0, r * 1.2))
 				mi.rotation = Vector3(PI / 2 + sin(a) * 0.35, 0, 0)
 				mi.rotation.y = -cos(a) * 0.35
+		"sock":
+			var white := Models.mat(Color(0.97, 0.97, 0.97), 0.8)
+			Models.part(self, Models.capsule(r * 0.6, r * 3.0), white, Vector3.ZERO, Vector3(PI / 2, 0, 0))
+			Models.part(self, Models.sphere(r * 0.7, 8), white, Vector3(0, -r * 0.6, -r * 1.2))
+			Models.part(self, Models.box(Vector3(r * 1.3, r * 0.3, r * 0.4)), Models.mat(Color(0.85, 0.2, 0.2), 0.8),
+				Vector3(0, 0, r * 1.3))
 		"smart":
 			Models.part(self, Models.sphere(r, 12), Models.mat(Color(0.3, 1.0, 0.7), 0.2, 0.0, 4.0))
 			var ring := TorusMesh.new()
