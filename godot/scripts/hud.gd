@@ -14,7 +14,7 @@ const HERO_INFO := {
 		"title": "VENOM",
 		"blurb": "A huge symbiote brute. Hits like a truck, flies on wings.",
 		"colour": Color(0.75, 0.78, 1.0),
-		"stats": [["POWER", 5], ["SPEED", 3], ["HEALTH", 5], ["SWING", 3]],
+		"stats": [["POWER", 5], ["SPEED", 3], ["HEALTH", 4], ["SWING", 3], ["LOOKS", 1]],
 		"controls": [
 			["SPACE", "Jump. Press again in mid-air to FLY on symbiote wings"],
 			["SPACE / CTRL", "Fly up / fly down"],
@@ -27,13 +27,28 @@ const HERO_INFO := {
 		"title": "SPIDER-MAN",
 		"blurb": "Fast and nimble. The best web-swinger in Supercity.",
 		"colour": Color(1.0, 0.35, 0.35),
-		"stats": [["POWER", 2], ["SPEED", 5], ["HEALTH", 3], ["SWING", 5]],
+		"stats": [["POWER", 2], ["SPEED", 4], ["HEALTH", 3], ["SWING", 5], ["LOOKS", 3]],
 		"controls": [
 			["SPACE", "Jump. Press again in mid-air to SOMERSAULT"],
 			["RUN INTO A WALL", "Crawl up it (SPACE leaps off, CTRL climbs down)"],
 			["RIGHT CLICK (K)", "Web shot: robots get stuck fast"],
 			["SHIFT (hold)", "Web-swing (aim at a building, or up at the sky)"],
 			["F (full energy)", "WEB STORM: webs up every robot nearby"],
+		],
+	},
+	"jamiesdad": {
+		"title": "JAMIE'S DAD",
+		"blurb": "Huge muscles, really good looking, super strong, super fast.",
+		"colour": Color(1.0, 0.82, 0.35),
+		"stats": [["POWER", 5], ["SPEED", 5], ["HEALTH", 5], ["SWING", 0], ["LOOKS", 5]],
+		"controls": [
+			["SHIFT (hold)", "SUPER-SPRINT: flatten anything you run into"],
+			["SPACE", "Super jump"],
+			["CTRL (in the air)", "GROUND POUND: smash everything round you"],
+			["LEFT CLICK (J)", "Super punch: sends robots flying"],
+			["RIGHT CLICK (K)", "Thunder clap: a shockwave through every robot"],
+			["F (full energy)", "DAD SMASH: knocks out every robot nearby"],
+			["SUPER HEALTH", "Tons of it, and it heals itself back up"],
 		],
 	},
 }
@@ -152,7 +167,7 @@ func _draw_title(sz: Vector2) -> void:
 	_outline_white("VENOMN", Vector2(sz.x / 2 + 8, 130), 110)
 	text("3D", Vector2(sz.x / 2, 200), 60, Color(1, 0.9, 0.3), HORIZONTAL_ALIGNMENT_CENTER, -1, 10)
 	text("Save Supercity from Mr Poo!", Vector2(sz.x / 2, 250), 30, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	text("Play as VENOM or SPIDER-MAN", Vector2(sz.x / 2, 330), 30, Color(1, 0.9, 0.45), HORIZONTAL_ALIGNMENT_CENTER)
+	text("Play as VENOM, SPIDER-MAN or JAMIE'S DAD", Vector2(sz.x / 2, 330), 30, Color(1, 0.9, 0.45), HORIZONTAL_ALIGNMENT_CENTER)
 	var y := 400.0
 	for row in COMMON:
 		text(row[0], Vector2(sz.x / 2 - 30, y), 22, Color(1, 0.9, 0.45), HORIZONTAL_ALIGNMENT_RIGHT)
@@ -172,12 +187,12 @@ func _draw_select(sz: Vector2) -> void:
 	for i in heroes.size():  # tabs
 		var info: Dictionary = HERO_INFO[heroes[i]]
 		var chosen: bool = heroes[i] == game.hero_id
-		var w := 230.0
+		var w := 196.0
 		var r := Rect2(x, 86, w, 44)
 		draw_rect(r, Color(info["colour"], 0.35) if chosen else Color(0.15, 0.15, 0.2, 0.8))
 		draw_rect(r, info["colour"] if chosen else Color(0.4, 0.4, 0.5), false, 3.0 if chosen else 1.5)
-		text("%d  %s" % [i + 1, info["title"]], Vector2(x + 14, 118), 24, Color.WHITE if chosen else Color(0.7, 0.7, 0.75))
-		x += w + 14
+		text("%d  %s" % [i + 1, info["title"]], Vector2(x + 12, 117), 20, Color.WHITE if chosen else Color(0.7, 0.7, 0.75))
+		x += w + 10
 	var hi: Dictionary = HERO_INFO[game.hero_id]
 	text(hi["title"], Vector2(40, 200), 64, hi["colour"], HORIZONTAL_ALIGNMENT_LEFT, -1, 10)
 	text(hi["blurb"], Vector2(40, 240), 22, Color.WHITE)

@@ -47,6 +47,18 @@ func setup(g, pos: Vector3, v: Vector3, side: String, k: String, dmg: float, r: 
 					Vector3(cos(a), sin(a), 0) * r * 0.6 + Vector3(0, 0, r * 1.2))
 				mi.rotation = Vector3(PI / 2 + sin(a) * 0.35, 0, 0)
 				mi.rotation.y = -cos(a) * 0.35
+		"clap":
+			var ring := TorusMesh.new()
+			ring.inner_radius = r * 0.7
+			ring.outer_radius = r
+			var air := StandardMaterial3D.new()
+			air.albedo_color = Color(1, 0.95, 0.8, 0.5)
+			air.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			air.emission_enabled = true
+			air.emission = Color(1, 0.9, 0.6)
+			air.emission_energy_multiplier = 0.8
+			Models.part(self, ring, air, Vector3.ZERO, Vector3(PI / 2, 0, 0))
+			Models.part(self, ring, air, Vector3(0, 0, 0.6), Vector3(PI / 2, 0, 0), Vector3.ONE * 0.6)
 		"bolt":
 			Models.part(self, Models.capsule(r * 0.6, r * 4.0), Models.mat(Color(1, 0.2, 0.15), 0.3, 0.0, 3.0),
 				Vector3.ZERO, Vector3(PI / 2, 0, 0))
@@ -74,6 +86,8 @@ func tick(dt: float) -> void:
 		var f := vel.normalized()
 		if abs(f.dot(Vector3.UP)) < 0.99:
 			look_at(position + f, Vector3.UP)
+	if kind == "clap":
+		scale = Vector3.ONE * (1.0 + age * 1.5)
 	if kind == "symbiote":
 		for i in range(1, 4):
 			var c := get_child(i) as Node3D
@@ -83,7 +97,7 @@ func tick(dt: float) -> void:
 		for e in game.targets():
 			if hit_ids.has(e.get_instance_id()):
 				continue
-			if position.distance_to(e.center()) < radius + e.radius + 0.3:
+			if position.distance_to(e.center()) < radius * scale.x + e.radius + 0.3:
 				hit_ids[e.get_instance_id()] = true
 				e.hurt(damage, vel, knock)
 				if web_secs > 0.0 and is_instance_valid(e) and not e.dead:

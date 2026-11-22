@@ -1,11 +1,11 @@
 extends Node3D
-## SpiderVenomn 3D: pick a hero (Venom or Spider-Man) and save Supercity from Mr Poo.
+## SpiderVenomn 3D: pick a hero (Venom, Spider-Man or Jamie's Dad) and save Supercity from Mr Poo.
 ## Owns the level, the hero, enemies, projectiles and effects, and runs the game states.
 
 var audio: GameAudio
 var level: LevelSupercity
 var world: Node3D
-const HEROES := ["venom", "spiderman"]
+const HEROES := ["venom", "spiderman", "jamiesdad"]
 
 var player: Hero
 var hero_id := "venom"
@@ -96,6 +96,8 @@ static func make_hero(id: String, g) -> Hero:
 	match id:
 		"spiderman":
 			return Spiderman.new(g)
+		"jamiesdad":
+			return JamiesDad.new(g)
 	return Venom.new(g)
 
 
@@ -320,16 +322,61 @@ func web_storm(at: Vector3) -> void:
 	banner("WEB STORM!", 1.2)
 
 
-func ground_wave_fx(at: Vector3) -> void:
+func ground_wave_fx(at: Vector3, colour := Models.VENOM_BLACK, max_r := 40.0, spd := 60.0) -> void:
+	## A harmless (to the hero) ring racing out across the ground.
 	var n := MeshInstance3D.new()
 	var torus := TorusMesh.new()
 	torus.inner_radius = 0.7
 	torus.outer_radius = 1.0
 	n.mesh = torus
-	n.material_override = Models.mat(Models.VENOM_BLACK, 0.2, 0.3, 0.0, 0.8)
+	n.material_override = Models.mat(colour, 0.2, 0.3, 0.3, 0.8)
 	n.position = at
 	world.add_child(n)
-	waves.append({"node": n, "pos": at, "r": 1.0, "max": 40.0, "speed": 60.0, "hit": true})
+	waves.append({"node": n, "pos": at, "r": 1.0, "max": max_r, "speed": spd, "hit": true})
+
+
+func shockwave(at: Vector3, r: float, dmg: float) -> void:
+	## Jamie's Dad's ground-pound: everything close by gets smashed and thrown back.
+	for e in targets():
+		var d: Vector3 = e.center() - at
+		if Vector2(d.x, d.z).length() < r + e.radius and abs(d.y) < 4.0:
+			e.hurt(dmg * (0.6 if e == boss else 1.0), d, 16.0)
+	burst(at + Vector3.UP * 0.3, Color(0.75, 0.7, 0.6), 30, 10.0)
+	ground_wave_fx(at + Vector3.UP * 0.2, Color(0.95, 0.85, 0.6), r, 40.0)
+	audio.play("explode")
+	shake(0.6)
+
+
+func dad_smash(at: Vector3) -> void:
+	## Jamie's Dad's ultimate: he leaps and punches the ground so hard every robot nearby is
+	## knocked out, and Mr Poo loses a quarter of his health.
+	for e in targets():
+		if e == boss:
+			continue
+		if e.center().distance_to(at) < 45.0:
+			e.hurt(e.hp, e.center() - at, 22.0)
+	if boss and boss.active and not boss.dead and boss.center().distance_to(at) < 45.0:
+		boss.hurt(boss.max_hp * 0.25, Vector3.ZERO)
+	for k in 3:
+		ground_wave_fx(at + Vector3.UP * (0.2 + k * 0.4), Color(1, 0.8, 0.35), 45.0, 45.0 + k * 15.0)
+	burst(at, Color(0.8, 0.72, 0.6), 70, 20.0)
+	audio.play("explode")
+	audio.play("roar")
+	shake(1.3)
+	banner("DAD SMASH!", 1.3)
+
+
+func streak(pos: Vector3, dir: Vector3) -> void:
+	## A white speed line, left hanging in the air behind a super-sprint.
+	if particles.size() > 300:
+		return
+	var mi := MeshInstance3D.new()
+	mi.mesh = Models.box(Vector3(0.06, 0.06, 1.8))
+	mi.material_override = Models.mat(Color(1, 1, 1), 0.3, 0.0, 1.5)
+	mi.position = pos
+	world.add_child(mi)
+	mi.look_at(pos + dir, Vector3.UP)
+	particles.append({"node": mi, "vel": Vector3(0, 0.1, 0), "life": 0.25, "max": 0.25})
 
 
 func boss_defeated(b: MrPoo) -> void:
@@ -529,7 +576,17 @@ func _contact_damage() -> void:
 		var ec: Vector3 = e.center()
 		var flat := Vector2(pc.x - ec.x, pc.z - ec.z).length()
 		var top: float = e.global_position.y + e.height
-		if flat > e.radius + 0.5 or feet.y > top + 0.2 or pc.y + 1.2 * player.size < e.global_position.y:
+		if flat > e.radius + 0.5 + player.radius * 0.5 or feet.y > top + 0.2 or pc.y + 1.2 * player.size < e.global_position.y:
+			continue
+		if player.rams():  # super-sprint: whatever he runs into gets flattened
+			if player.ram_cd <= 0.0:
+				var push := Vector3(player.velocity.x, 0, player.velocity.z).normalized()
+				e.hurt(30.0 if e == boss else e.hp + 1.0, push + Vector3.UP * 0.4, 22.0)
+				audio.play("hit")
+				shake(0.3)
+				if e == boss:  # bounces off the big lad
+					player.velocity = -push * 14.0 + Vector3.UP * 7.0
+					player.ram_cd = 0.4
 			continue
 		if player.velocity.y < -3.0 and feet.y > top - 0.7:
 			e.hurt(15.0 if e == boss else 25.0, Vector3.ZERO, 0.0)

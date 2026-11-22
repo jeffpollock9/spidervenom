@@ -78,6 +78,10 @@ func run() -> void:
 		await spiderman_tests()
 		_finish(t0)
 		return
+	if OS.get_cmdline_user_args().has("--dad-only"):
+		await dad_tests()
+		_finish(t0)
+		return
 	if shots_dir != "":
 		game.state = "title"
 		await frames(10)
@@ -310,6 +314,7 @@ func run() -> void:
 	check(game.finished == "lost", "dying loses (%s)" % game.finished)
 
 	await spiderman_tests()
+	await dad_tests()
 	_finish(t0)
 
 
@@ -336,8 +341,12 @@ func spiderman_tests() -> void:
 		"hero select picks Spider-Man (%s)" % game.hero_id)
 	await shot("select")
 	game.choose_hero(1)
+	check(game.player is JamiesDad, "hero select picks Jamie's Dad")
+	game.choose_hero(1)
 	check(game.player is Venom, "hero select wraps round to Venom")
 	game.choose_hero(-1)
+	game.choose_hero(-1)
+	check(game.player is Spiderman, "hero select goes backwards too")
 	game.start_play()
 
 	# --- quicker than Venom, and a somersault for a second jump
@@ -530,3 +539,173 @@ func spiderman_tests() -> void:
 	cur = Controls.new()
 	await frames(220)
 	check(game.finished == "won", "Spider-Man saves Supercity (%s)" % game.finished)
+
+
+func dad_tests() -> void:
+	print("  --- Jamie's Dad")
+	game.state = "title"
+	game.hero_id = "jamiesdad"
+	game.new_game()
+	game.open_select()
+	await frames(40)
+	await shot("dad_select")
+	if shots_dir != "":  # a close look at that handsome face
+		game.rig.height = 2.12
+		game.rig.pitch = 0.0
+		game.rig.shoulder = 0.0
+		game.rig.arm.spring_length = 1.5
+		await frames(5)
+		await shot("dad_face")
+	game.start_play()
+
+	# --- super speed
+	var p := await fresh()
+	clear_enemies()
+	check(p is JamiesDad and p.max_hp >= 300.0, "playing as Jamie's Dad (%d hp)" % p.max_hp)
+	var x0 := p.global_position.x
+	cur.move = Vector2(0, 1)
+	await frames(60)
+	var run := p.global_position.x - x0
+	check(run > 11.0, "he runs fast (%.1f m in a second)" % run)
+	cur.alt_held = true
+	var top_speed := 0.0
+	for i in 40:
+		await frames(1)
+		top_speed = max(top_speed, Vector2(p.velocity.x, p.velocity.z).length())
+		if i == 30:
+			await shot("dad_sprint")
+	check(p.sprinting and top_speed > 28.0, "SHIFT super-sprints (%.1f m/s)" % top_speed)
+	cur = Controls.new()
+	await frames(40)
+
+	# --- running into robots at super speed flattens them, and doesn't hurt him
+	p = await fresh()
+	clear_enemies()
+	var foes: Array = []
+	for k in 3:
+		foes.append(game.spawn_enemy("walker", p.global_position + Vector3(14 + k * 5, 0.3, 0)))
+	await frames(3)
+	var hp0 := p.hp
+	cur.move = Vector2(0, 1)
+	cur.alt_held = true
+	await frames(70)
+	var flattened := 0
+	for e in foes:
+		if not is_instance_valid(e) or e.dead:
+			flattened += 1
+	check(flattened == 3 and p.hp >= hp0, "super-sprint flattens robots (%d/3, hp %d -> %d)" % [flattened, hp0, p.hp])
+	cur = Controls.new()
+	await frames(40)
+
+	# --- one super punch is enough for a robot
+	p = await fresh()
+	clear_enemies()
+	var foe: Enemy = game.spawn_enemy("walker", p.global_position + Vector3(2.4, 0.3, 0))
+	await frames(3)
+	cur.aim_override = foe.center()
+	cur.primary_pressed = true
+	await frames(3)
+	check(not is_instance_valid(foe) or foe.dead, "one super punch knocks out a robot")
+	cur = Controls.new()
+	await frames(30)
+
+	# --- thunder clap blasts through a line of robots
+	clear_enemies()
+	foes.clear()
+	for k in 3:
+		foes.append(game.spawn_enemy("shooter", p.global_position + Vector3(7 + k * 3, 0.3, 0)))
+	await frames(3)
+	cur.aim_override = (foes[0] as Enemy).center()
+	cur.special_pressed = true
+	await frames(30)
+	var clapped := 0
+	for e in foes:
+		if not is_instance_valid(e) or e.hp < e.max_hp:
+			clapped += 1
+	check(clapped == 3, "thunder clap hits every robot in a line (%d/3)" % clapped)
+	cur = Controls.new()
+
+	# --- ground pound
+	p = await fresh()
+	clear_enemies()
+	foes.clear()
+	for k in 4:
+		var a := k * TAU / 4.0
+		foes.append(game.spawn_enemy("walker", p.global_position + Vector3(cos(a) * 5.0, 0.3, sin(a) * 5.0)))
+	cur.jump_pressed = true
+	cur.jump_held = true
+	await frames(25)
+	cur = Controls.new()
+	cur.down_held = true
+	await frames(2)
+	check(p.pounding, "CTRL in mid-air starts a ground pound")
+	var pounded := false
+	for i in 60:
+		await frames(1)
+		if not p.pounding:
+			pounded = true
+			break
+	await shot("dad_pound")
+	var squashed := 0
+	for e in foes:
+		if not is_instance_valid(e) or e.dead:
+			squashed += 1
+	check(pounded and squashed >= 3, "ground pound flattens the robots round him (%d/4)" % squashed)
+	cur = Controls.new()
+
+	# --- super health heals itself
+	p = await fresh()
+	clear_enemies()
+	p.take_damage(100.0, p.global_position + Vector3.RIGHT)
+	var low := p.hp
+	await frames(60 * 4)
+	check(p.hp > low + 10.0, "super health heals back up (%d -> %d)" % [low, p.hp])
+
+	# --- DAD SMASH
+	p = await fresh()
+	clear_enemies()
+	foes.clear()
+	for k in 5:
+		foes.append(game.spawn_enemy("walker", p.global_position + Vector3(8 + k * 5, 0.3, -6 + k * 3)))
+	await frames(3)
+	p.energy = 100.0
+	cur.ult_pressed = true
+	await frames(5)
+	await shot("dad_smash")
+	var smashed := 0
+	for e in foes:
+		if not is_instance_valid(e) or e.dead:
+			smashed += 1
+	check(smashed == 5, "DAD SMASH knocks out every robot (%d/5)" % smashed)
+	cur = Controls.new()
+
+	# --- Jamie's Dad vs Mr Poo
+	p = await fresh()
+	clear_enemies()
+	p.global_position = Vector3(275, 0.3, 0)
+	await frames(150)
+	var boss: MrPoo = game.boss
+	var hp_start := boss.hp
+	var damage := 0.0
+	for f in 60 * 10:
+		if not is_instance_valid(boss) or boss.dead:
+			break
+		p.hp = p.max_hp
+		cur.aim_override = boss.center()
+		var to := boss.global_position - p.global_position
+		game.rig.face_dir(Vector3(to.x, 0, to.z).normalized())
+		cur.move = Vector2(0, 1) if Vector2(to.x, to.z).length() > 5.0 else Vector2.ZERO
+		var close := Vector2(to.x, to.z).length() < p.punch_reach + boss.radius
+		cur.primary_pressed = close and p.cd <= 0.0
+		cur.special_pressed = not close and p.cd <= 0.0 and f % 30 == 0
+		await frames(1)
+		if is_instance_valid(boss):
+			damage = hp_start - boss.hp
+		if f == 150:
+			await shot("dad_boss")
+	check(damage > 150.0, "Jamie's Dad batters Mr Poo (%.0f damage)" % damage)
+	if is_instance_valid(boss) and not boss.dead:
+		boss.hurt(1e6, Vector3.ZERO)
+	cur = Controls.new()
+	await frames(220)
+	check(game.finished == "won", "Jamie's Dad saves Supercity (%s)" % game.finished)

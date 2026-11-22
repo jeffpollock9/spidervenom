@@ -32,7 +32,7 @@ You can also jump on enemies' heads to squash them.
 
 ## SpiderVenomn 3D (new, work in progress)
 
-A third-person 3D version made with [Godot 4](https://godotengine.org). Pick **Venom** or **Spider-Man** and save **Supercity** from **Mr Poo**.
+A third-person 3D version made with [Godot 4](https://godotengine.org). Pick **Venom**, **Spider-Man** or **Jamie's Dad** and save **Supercity** from **Mr Poo**.
 
 ```bash
 ./run3d.sh     # downloads Godot 4.7.2 the first time (about 60 MB), then plays
@@ -40,7 +40,7 @@ A third-person 3D version made with [Godot 4](https://godotengine.org). Pick **V
 
 `./install.sh` also adds **SpiderVenomn 3D** to your app menu. After that, `git pull` is all you need for updates.
 
-After the title screen you choose your hero (A/D or 1/2, then Space). Press **H** on the pause or end screen to change hero.
+After the title screen you choose your hero (A/D or 1-3, then Space). Press **H** on the pause or end screen to change hero.
 
 Controls for both heroes:
 
@@ -49,18 +49,19 @@ Controls for both heroes:
 | W A S D | Run (relative to the camera) |
 | Mouse | Look around and aim (crosshair) |
 | Left click (J) | Punch |
-| Shift (hold) | Swing: aim at a skyscraper (or up at the sky) |
+| Shift (hold) | Swing: aim at a skyscraper (or up at the sky). Jamie's Dad sprints instead |
 | Esc | Pause (R restart, H change hero, Q quit) |
 | F11 / M | Fullscreen / music on-off |
 
-| | Venom | Spider-Man |
-|---|---|---|
-| Size | A huge brute, about 3.8 m tall | Human-sized and fast |
-| Space in mid-air | Fly on symbiote wings (Space up, Ctrl down) | Somersault (a second jump) |
-| Right click (K) | Symbiote blast | Web shot: the robot is stuck in web for a few seconds |
-| Shift | Swing on a tendril | Web-swing: faster, higher and cheaper |
-| Special | | Run into a wall to crawl up it (Space leaps off, Ctrl climbs down) |
-| F (full energy) | **Symbiote blast**: wipes out every robot nearby, a fifth of Mr Poo's health | **Web storm**: webs up and hurts every robot nearby, 15% of Mr Poo's health |
+| | Venom | Spider-Man | Jamie's Dad |
+|---|---|---|---|
+| Size | A huge brute, about 3.8 m tall | Human-sized and fast | Huge muscles, really good looking, about 2.3 m |
+| Space in mid-air | Fly on symbiote wings (Space up, Ctrl down) | Somersault (a second jump) | Ctrl: **ground pound**, smashes everything round him |
+| Left click (J) | Heavy punch | Quick jabs | **Super punch**: one hit knocks a robot flying |
+| Right click (K) | Symbiote blast | Web shot: the robot is stuck in web for a few seconds | **Thunder clap**: a shockwave through every robot in a line |
+| Shift | Swing on a tendril | Web-swing: faster, higher and cheaper | **Super-sprint** (32 m/s): anything he runs into is flattened |
+| Special | | Run into a wall to crawl up it (Space leaps off, Ctrl climbs down) | **Super health**: 300 HP, and it heals itself when he's not being hit |
+| F (full energy) | **Symbiote blast**: wipes out every robot nearby, a fifth of Mr Poo's health | **Web storm**: webs up and hurts every robot nearby, 15% of Mr Poo's health | **Dad smash**: knocks out every robot nearby, a quarter of Mr Poo's health |
 
 Run down the avenue between the skyscrapers. Ride the yellow sky-lifts over the two broken bits of road, or swing or fly across. Falling in costs 15 health. At the end of the street is a plaza. When you go in, the gate shuts behind you and Mr Poo wakes up. He hops at you and lobs poo that leaves slippery puddles. At half health he gets angry: he throws more poo, his landings send out shockwaves you have to jump over, and he spawns mini-poos.
 

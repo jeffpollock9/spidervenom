@@ -17,6 +17,7 @@ var jump := 12.5
 var punch_damage := 20.0
 var punch_reach := 4.0
 var punch_cd := 0.42
+var punch_knock := 12.0
 var blast_cost := 14.0
 var swing_cost := 3.0
 var swing_max_speed := 32.0
@@ -26,6 +27,10 @@ var fly_speed := 15.0
 var can_climb := false
 var climb_speed := 8.0
 var air_jumps := 0
+var can_sprint := false            # SHIFT sprints instead of swinging
+var sprint_speed := 30.0
+var can_pound := false             # CTRL in mid-air slams down
+var regen := 0.0                   # health per second, once he's gone a while without a hit
 var ult_ready_text := "F: ULTIMATE READY!"
 var hint := ""
 var rope_radius := 0.12
@@ -63,6 +68,10 @@ var climbing := false
 var wall_n := Vector3.ZERO
 var air_jumps_left := 0
 var flip_t := 0.0
+var sprinting := false
+var pounding := false
+var hurt_t := 99.0
+var ram_cd := 0.0
 
 
 func _init(g) -> void:
@@ -142,6 +151,10 @@ func tick(ctl: Controls, dt: float) -> void:
 	shoot_t = max(0.0, shoot_t - dt)
 	message_t = max(0.0, message_t - dt)
 	flip_t = max(0.0, flip_t - dt)
+	ram_cd = max(0.0, ram_cd - dt)
+	hurt_t += dt
+	if regen > 0.0 and hurt_t > 2.0 and not dead and hp < max_hp:
+		heal(regen * dt)
 	energy = min(100.0, energy + 14.0 * dt)
 	aim = ctl.aim_override if ctl.aim_override != null else rig.aim_point(get_rid())
 
@@ -149,7 +162,12 @@ func tick(ctl: Controls, dt: float) -> void:
 	if wish.length() > 1.0:
 		wish = wish.normalized()
 
-	if ctl.alt_pressed or (ctl.alt_held and not swinging and not is_on_floor() and _aim_up() > 0.2):
+	if can_sprint:
+		var was := sprinting
+		sprinting = ctl.alt_held and wish.length() > 0.1
+		if sprinting and not was:
+			game.audio.play("whoosh")
+	elif ctl.alt_pressed or (ctl.alt_held and not swinging and not is_on_floor() and _aim_up() > 0.2):
 		try_swing(ctl.alt_pressed)
 	elif swinging and not ctl.alt_held:
 		release_swing()
@@ -193,8 +211,8 @@ func _on_safe_ground() -> bool:
 
 
 func walk_move(ctl: Controls, wish: Vector3, dt: float) -> void:
-	var spd := speed
-	var accel := 60.0 if is_on_floor() else 25.0
+	var spd := sprint_speed if sprinting else speed
+	var accel := (60.0 if is_on_floor() else 25.0) * (2.0 if sprinting else 1.0)
 	if game.in_puddle(self):
 		spd *= 0.55
 		accel = 10.0
@@ -220,6 +238,10 @@ func walk_move(ctl: Controls, wish: Vector3, dt: float) -> void:
 			jump_buf = 0.0
 			flip_t = 0.5
 			game.audio.play("jump")
+	if can_pound and ctl.down_held and not pounding and not is_on_floor() and coyote <= 0.0:
+		pounding = true  # GROUND POUND: straight down, fast
+		velocity = Vector3(velocity.x * 0.2, -40.0, velocity.z * 0.2)
+		game.audio.play("whoosh")
 	var g := GRAVITY
 	if not ctl.jump_held and velocity.y > 0.0:
 		g *= 2.2
@@ -228,6 +250,9 @@ func walk_move(ctl: Controls, wish: Vector3, dt: float) -> void:
 	coyote = 0.1 if is_on_floor() else max(0.0, coyote - dt)
 	if is_on_floor():
 		air_jumps_left = air_jumps
+		if pounding:
+			pounding = false
+			_pound_landed()
 	if can_climb and is_on_wall() and wish.length() > 0.3:
 		var n := get_wall_normal()
 		if abs(n.y) < 0.3 and wish.dot(-n) > 0.5:
@@ -374,7 +399,7 @@ func punch() -> void:
 		var to: Vector3 = e.center() - center()
 		var flat := Vector3(to.x, 0, to.z)
 		if flat.length() < punch_reach + e.radius and abs(to.y) < 2.0 * size + 0.6 and fwd.dot(flat.normalized()) > 0.2:
-			e.hurt(punch_damage, fwd, 12.0)
+			e.hurt(punch_damage, fwd, punch_knock)
 			hits += 1
 	game.audio.play("hit" if hits else "punch")
 
@@ -396,11 +421,22 @@ func _ultimate_effect() -> void:
 	pass
 
 
+func _pound_landed() -> void:
+	pass
+
+
+func rams() -> bool:
+	## True while he's running fast enough to flatten whatever he runs into.
+	return sprinting and Vector2(velocity.x, velocity.z).length() > speed * 1.2
+
+
 func take_damage(amount: float, from_pos: Vector3, knock := 8.0) -> bool:
 	if invuln > 0.0 or dead:
 		return false
 	hp -= amount
 	invuln = 0.9
+	hurt_t = 0.0
+	pounding = false
 	var away := global_position - from_pos
 	away.y = 0
 	away = away.normalized() if away.length() > 0.01 else Vector3.BACK
