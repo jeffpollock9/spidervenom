@@ -467,10 +467,6 @@ static func jamies_dad() -> Dictionary:
 	var shoe := mat(Color(0.95, 0.95, 0.95), 0.5)
 	var sole := mat(Color(0.85, 0.2, 0.15), 0.5)
 	var hair := mat(Color(0.3, 0.18, 0.09), 0.45, 0.0, 0.0, 0.2)
-	var white := mat(Color(1, 1, 1), 0.2, 0.0, 0.25)
-	var iris := mat(Color(0.15, 0.5, 0.95), 0.2, 0.0, 0.4)
-	var dark := mat(Color(0.05, 0.04, 0.04), 0.4)
-	var lip := mat(Color(0.75, 0.42, 0.38), 0.5)
 	var d := {"root": root}
 
 	# legs: jeans over big thighs, white trainers
@@ -525,15 +521,28 @@ static func jamies_dad() -> Dictionary:
 		d["arm_" + s] = sh
 		d["fore_" + s] = elbow
 
+	handsome_head(d, chest, Vector3(0, 0.62, -0.06), skin, hair, true)
+	return d
+
+
+static func handsome_head(d: Dictionary, chest: Node3D, at: Vector3, skin: Material, hair: Material,
+		adult: bool) -> Node3D:
+	## The good-looking family face (Jamie and his dad): square jaw, blue eyes, a quiff and a
+	## smile that twinkles. Adds "head" and "sparkle" to d.
+	var white := mat(Color(1, 1, 1), 0.2, 0.0, 0.25)
+	var iris := mat(Color(0.15, 0.5, 0.95), 0.2, 0.0, 0.4)
+	var dark := mat(Color(0.05, 0.04, 0.04), 0.4)
+	var lip := mat(Color(0.75, 0.42, 0.38), 0.5)
 	# head: strong square jaw, great hair, blue eyes and a dazzling smile
-	var head := pivot(chest, Vector3(0, 0.62, -0.06), "head")
+	var head := pivot(chest, at, "head")
 	d["head"] = head
 	_muscle(head, 0.21, skin, Vector3(0, 0.07, 0), Vector3(0.95, 1.1, 1.05))          # skull
 	_muscle(head, 0.16, skin, Vector3(0, -0.06, -0.03), Vector3(0.98, 0.9, 1.0))      # cheeks and jaw
 	for side: int in [-1, 1]:                                                          # jaw corners
 		_muscle(head, 0.06, skin, Vector3(0.095 * side, -0.13, -0.03), Vector3(1.0, 0.9, 1.3))
 	_muscle(head, 0.07, skin, Vector3(0, -0.165, -0.085), Vector3(1.3, 0.8, 0.9))    # chin
-	_muscle(head, 0.025, mat(DAD_SKIN.darkened(0.12), 0.6), Vector3(0, -0.175, -0.18), Vector3(0.5, 1.0, 0.4))  # chin dimple
+	if adult:
+		_muscle(head, 0.025, mat(DAD_SKIN.darkened(0.12), 0.6), Vector3(0, -0.175, -0.18), Vector3(0.5, 1.0, 0.4))  # chin dimple
 	for side: int in [-1, 1]:
 		_muscle(head, 0.045, skin, Vector3(0.205 * side, 0.03, 0.0), Vector3(0.5, 1.2, 0.9))  # ears
 		part(head, sphere(0.032), white, Vector3(0.075 * side, 0.065, -0.178), Vector3.ZERO, Vector3(1.35, 0.8, 0.6))
@@ -542,7 +551,8 @@ static func jamies_dad() -> Dictionary:
 		_muscle(head, 0.036, skin, Vector3(0.075 * side, 0.088, -0.17), Vector3(1.35, 0.45, 0.7))  # eyelids
 		part(head, capsule(0.012, 0.085), hair, Vector3(0.078 * side, 0.118, -0.185),
 			Vector3(0, 0, PI / 2 - 0.15 * side))  # eyebrows
-		part(head, capsule(0.025, 0.12), hair, Vector3(0.195 * side, 0.08, 0.0))  # sideburns
+		if adult:
+			part(head, capsule(0.025, 0.12), hair, Vector3(0.195 * side, 0.08, 0.0))  # sideburns
 	part(head, capsule(0.022, 0.1), skin, Vector3(0, 0.03, -0.2), Vector3(-0.25, 0, 0))  # nose bridge
 	_muscle(head, 0.03, skin, Vector3(0, -0.015, -0.215), Vector3(1.1, 0.8, 0.9))      # nose tip
 	# the smile: a curve of white teeth between thin lips
@@ -567,6 +577,102 @@ static func jamies_dad() -> Dictionary:
 	part(sparkle, box(Vector3(0.09, 0.02, 0.01)), star, Vector3.ZERO, Vector3(0, 0, -PI / 4))
 	sparkle.visible = false
 	d["sparkle"] = sparkle
+	return head
+
+
+# --------------------------------------------------------------------------- Jamie
+
+const JAMIE_SIZE := 0.62  # same skeleton, scaled down to ~1.7 m
+
+
+static func jamie() -> Dictionary:
+	var root := Node3D.new()
+	root.name = "JamieModel"
+	root.scale = Vector3.ONE * JAMIE_SIZE
+	var skin := mat(DAD_SKIN, 0.55, 0.0, 0.0, 0.25)
+	var hoodie := mat(Color(0.06, 0.55, 0.5), 0.75, 0.0, 0.0, 0.25)
+	var cuff := mat(Color(0.04, 0.4, 0.37), 0.8)
+	var joggers := mat(Color(0.16, 0.16, 0.2), 0.85)
+	var stripe := mat(Color(0.95, 0.95, 0.95), 0.6)
+	var shoe := mat(Color(0.88, 0.12, 0.12), 0.45)
+	var sole := mat(Color(0.97, 0.97, 0.97), 0.5)
+	var gold := mat(Color(1.0, 0.78, 0.2), 0.25, 0.9, 0.4)
+	var hair := mat(Color(0.38, 0.22, 0.1), 0.45, 0.0, 0.0, 0.2)
+	var steel := mat(Color(0.75, 0.78, 0.82), 0.25, 0.85)
+	var d := {"root": root}
+
+	# legs: joggers with a white stripe, red trainers
+	for side: int in [-1, 1]:
+		var s := "l" if side < 0 else "r"
+		var hip := pivot(root, Vector3(0.21 * side, 1.08, 0.0), "leg_" + s)
+		_muscle(hip, 0.19, joggers, Vector3(0, -0.06, 0), Vector3.ONE)
+		part(hip, capsule(0.17, 0.66), joggers, Vector3(0, -0.28, 0))
+		part(hip, box(Vector3(0.02, 0.6, 0.05)), stripe, Vector3(0.17 * side, -0.28, 0))
+		var knee := pivot(hip, Vector3(0, -0.56, 0), "shin_" + s)
+		part(knee, capsule(0.13, 0.56), joggers, Vector3(0, -0.22, 0))
+		part(knee, box(Vector3(0.02, 0.4, 0.05)), stripe, Vector3(0.13 * side, -0.2, 0))
+		var ankle := pivot(knee, Vector3(0, -0.5, 0), "foot_" + s)
+		_muscle(ankle, 0.12, shoe, Vector3(0, -0.0, -0.08), Vector3(1.0, 0.7, 1.9))
+		part(ankle, box(Vector3(0.22, 0.05, 0.46)), sole, Vector3(0, -0.075, -0.08))
+		d["leg_" + s] = hip
+		d["shin_" + s] = knee
+
+	# torso: a hoodie with a gold J, over a strong build
+	var torso := pivot(root, Vector3(0, 1.0, 0), "torso")
+	d["torso"] = torso
+	_muscle(torso, 0.25, joggers, Vector3(0, 0.06, 0.0), Vector3(1.1, 0.6, 0.85))
+	part(torso, capsule(0.27, 0.8), hoodie, Vector3(0, 0.4, 0.02), Vector3.ZERO, Vector3(1.05, 1.0, 0.78))
+	part(torso, cylinder(0.29, 0.29, 0.1, 18), cuff, Vector3(0, 0.13, 0.02), Vector3.ZERO, Vector3(1.05, 1.0, 0.8))
+	_muscle(torso, 0.13, cuff, Vector3(0, 0.3, -0.19), Vector3(1.6, 0.8, 0.35))  # front pocket
+	var chest := pivot(torso, Vector3(0, 0.8, 0), "chest")
+	d["chest"] = chest
+	_muscle(chest, 0.4, hoodie, Vector3(0, 0.0, 0.03), Vector3(1.1, 0.8, 0.72))
+	for side: int in [-1, 1]:
+		_muscle(chest, 0.2, hoodie, Vector3(0.16 * side, 0.05, -0.15), Vector3(1.1, 0.8, 0.6))
+	# the gold J
+	# (he faces -Z, so his left (-x) is on the right as you look at him)
+	part(chest, box(Vector3(0.05, 0.22, 0.03)), gold, Vector3(-0.03, 0.05, -0.29))
+	part(chest, box(Vector3(0.12, 0.045, 0.03)), gold, Vector3(-0.03, 0.16, -0.29))
+	part(chest, box(Vector3(0.1, 0.045, 0.03)), gold, Vector3(0.02, -0.06, -0.285))
+	part(chest, box(Vector3(0.045, 0.07, 0.03)), gold, Vector3(0.065, -0.02, -0.285))
+	# hood folded down at the back, drawstrings at the front
+	_muscle(chest, 0.2, cuff, Vector3(0, 0.3, 0.2), Vector3(1.3, 0.6, 0.8))
+	for side: int in [-1, 1]:
+		part(chest, capsule(0.012, 0.2), stripe, Vector3(0.06 * side, 0.18, -0.25))
+	part(chest, capsule(0.15, 0.35), skin, Vector3(0, 0.34, -0.02))  # neck
+	# the jetpack he built himself
+	var pack := pivot(chest, Vector3(0, -0.05, 0.32), "jetpack")
+	part(pack, box(Vector3(0.36, 0.42, 0.14)), mat(Color(0.25, 0.27, 0.3), 0.4, 0.7))
+	var flames: Array[Node3D] = []
+	for side: int in [-1, 1]:
+		part(pack, capsule(0.09, 0.5), steel, Vector3(0.14 * side, 0.0, 0.08))
+		part(pack, cylinder(0.06, 0.08, 0.08, 10), mat(Color(0.2, 0.2, 0.22), 0.5, 0.6), Vector3(0.14 * side, -0.28, 0.08))
+		_muscle(pack, 0.03, mat(Color(0.2, 1.0, 0.6), 0.2, 0.0, 4.0), Vector3(0.14 * side, 0.12, 0.17), Vector3.ONE)
+		var flame := pivot(pack, Vector3(0.14 * side, -0.32, 0.08))
+		part(flame, cylinder(0.065, 0.0, 0.4, 10), mat(Color(1.0, 0.6, 0.15), 0.2, 0.0, 5.0), Vector3(0, -0.2, 0))
+		part(flame, cylinder(0.035, 0.0, 0.25, 8), mat(Color(1.0, 0.95, 0.6), 0.2, 0.0, 7.0), Vector3(0, -0.12, 0))
+		flame.visible = false
+		flames.append(flame)
+	d["flames"] = flames
+
+	# arms: hoodie sleeves, strong hands
+	for side: int in [-1, 1]:
+		var s := "l" if side < 0 else "r"
+		var sh := pivot(chest, Vector3(0.48 * side, 0.18, 0.02), "arm_" + s)
+		_muscle(sh, 0.18, hoodie, Vector3(0.02 * side, 0.0, 0), Vector3.ONE)
+		part(sh, capsule(0.13, 0.6), hoodie, Vector3(0, -0.3, 0))
+		_muscle(sh, 0.1, hoodie, Vector3(0, -0.27, -0.06), Vector3(1.0, 1.6, 1.0))
+		var elbow := pivot(sh, Vector3(0, -0.58, 0), "fore_" + s)
+		part(elbow, capsule(0.115, 0.5), hoodie, Vector3(0, -0.2, 0))
+		part(elbow, cylinder(0.105, 0.105, 0.08, 12), cuff, Vector3(0, -0.42, 0))
+		var wrist := pivot(elbow, Vector3(0, -0.5, 0), "hand_" + s)
+		_muscle(wrist, 0.1, skin, Vector3(0, -0.04, 0), Vector3(1.0, 1.1, 0.8))
+		d["arm_" + s] = sh
+		d["fore_" + s] = elbow
+
+	# the family good looks (a slightly bigger head, he's still growing)
+	var head := handsome_head(d, chest, Vector3(0, 0.58, -0.05), skin, hair, false)
+	head.scale = Vector3.ONE * 1.25
 	return d
 
 

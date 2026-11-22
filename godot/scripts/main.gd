@@ -1,11 +1,11 @@
 extends Node3D
-## SpiderVenomn 3D: pick a hero (Venom, Spider-Man or Jamie's Dad) and save Supercity from Mr Poo.
+## SpiderVenomn 3D: pick a hero (Venom, Spider-Man, Jamie's Dad or Jamie) and save Supercity from Mr Poo.
 ## Owns the level, the hero, enemies, projectiles and effects, and runs the game states.
 
 var audio: GameAudio
 var level: LevelSupercity
 var world: Node3D
-const HEROES := ["venom", "spiderman", "jamiesdad"]
+const HEROES := ["venom", "spiderman", "jamiesdad", "jamie"]
 
 var player: Hero
 var hero_id := "venom"
@@ -98,6 +98,8 @@ static func make_hero(id: String, g) -> Hero:
 			return Spiderman.new(g)
 		"jamiesdad":
 			return JamiesDad.new(g)
+		"jamie":
+			return Jamie.new(g)
 	return Venom.new(g)
 
 
@@ -364,6 +366,28 @@ func dad_smash(at: Vector3) -> void:
 	audio.play("roar")
 	shake(1.3)
 	banner("DAD SMASH!", 1.3)
+
+
+func genius_hack(at: Vector3) -> void:
+	## Jamie's ultimate: he hacks every robot nearby so they shut down and blow up, and
+	## scrambles Mr Poo's brain so he freezes for a few seconds.
+	for e in targets():
+		if e == boss or e.center().distance_to(at) >= 45.0:
+			continue
+		popup(e.center() + Vector3.UP * 1.5, "HACKED!", Color(0.3, 1.0, 0.6))
+		e.hurt(e.hp, Vector3.ZERO, 0.0)
+	if boss and boss.active and not boss.dead and boss.center().distance_to(at) < 45.0:
+		popup(boss.center() + Vector3.UP * 4.0, "HACKED!", Color(0.3, 1.0, 0.6))
+		boss.hurt(boss.max_hp * 0.2, Vector3.ZERO)
+		if not boss.dead:
+			boss.daze(3.0)
+	for k in 3:
+		ground_wave_fx(at + Vector3.UP * (0.5 + k * 1.2), Color(0.2, 1.0, 0.55), 45.0, 40.0 + k * 10.0)
+	burst(at, Color(0.3, 1.0, 0.6), 50, 14.0)
+	audio.play("hack")
+	audio.play("explode")
+	shake(0.8)
+	banner("GENIUS HACK!", 1.3)
 
 
 func streak(pos: Vector3, dir: Vector3) -> void:

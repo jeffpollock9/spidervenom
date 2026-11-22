@@ -13,6 +13,7 @@ var life := 2.0
 var knock := 8.0
 var pierce := false
 var web_secs := 0.0
+var homing := false
 var dead := false
 var age := 0.0
 var hit_ids := {}
@@ -31,6 +32,7 @@ func setup(g, pos: Vector3, v: Vector3, side: String, k: String, dmg: float, r: 
 	knock = opts.get("knock", 8.0)
 	pierce = opts.get("pierce", false)
 	web_secs = opts.get("web", 0.0)
+	homing = opts.get("homing", false)
 	match kind:
 		"symbiote":
 			var black := Models.mat(Models.VENOM_BLACK, 0.2, 0.3, 0.0, 0.8)
@@ -47,6 +49,12 @@ func setup(g, pos: Vector3, v: Vector3, side: String, k: String, dmg: float, r: 
 					Vector3(cos(a), sin(a), 0) * r * 0.6 + Vector3(0, 0, r * 1.2))
 				mi.rotation = Vector3(PI / 2 + sin(a) * 0.35, 0, 0)
 				mi.rotation.y = -cos(a) * 0.35
+		"smart":
+			Models.part(self, Models.sphere(r, 12), Models.mat(Color(0.3, 1.0, 0.7), 0.2, 0.0, 4.0))
+			var ring := TorusMesh.new()
+			ring.inner_radius = r * 1.3
+			ring.outer_radius = r * 1.6
+			Models.part(self, ring, Models.mat(Color(0.8, 1.0, 0.9), 0.2, 0.0, 3.0))
 		"clap":
 			var ring := TorusMesh.new()
 			ring.inner_radius = r * 0.7
@@ -74,6 +82,17 @@ func tick(dt: float) -> void:
 		kill(false)
 		return
 	vel.y -= grav * dt
+	if homing:  # smart shot: steer towards the nearest target ahead
+		var best = null
+		var best_d := 40.0
+		for e in game.targets():
+			var to: Vector3 = e.center() - position
+			if to.length() < best_d and to.normalized().dot(vel.normalized()) > -0.2:
+				best_d = to.length()
+				best = e
+		if best != null:
+			var want: Vector3 = (best.center() - position).normalized() * vel.length()
+			vel = vel.lerp(want, min(1.0, 7.0 * dt))
 	var nxt := position + vel * dt
 	var q := PhysicsRayQueryParameters3D.create(position, nxt, 1)
 	var hit := get_world_3d().direct_space_state.intersect_ray(q)
@@ -124,6 +143,8 @@ func kill(hit_ground: bool) -> void:
 				game.add_puddle(position)
 		"symbiote":
 			game.burst(position, Color(0.08, 0.08, 0.12), 8, 6.0)
+		"smart":
+			game.burst(position, Color(0.3, 1.0, 0.7), 8, 6.0)
 		"web":
 			game.burst(position, Color(0.95, 0.95, 1.0), 8, 5.0)
 		_:

@@ -32,7 +32,7 @@ You can also jump on enemies' heads to squash them.
 
 ## SpiderVenomn 3D (new, work in progress)
 
-A third-person 3D version made with [Godot 4](https://godotengine.org). Pick **Venom**, **Spider-Man** or **Jamie's Dad** and save **Supercity** from **Mr Poo**.
+A third-person 3D version made with [Godot 4](https://godotengine.org). Pick **Venom**, **Spider-Man**, **Jamie's Dad** or **Jamie** and save **Supercity** from **Mr Poo**.
 
 ```bash
 ./run3d.sh     # downloads Godot 4.7.2 the first time (about 60 MB), then plays
@@ -40,7 +40,7 @@ A third-person 3D version made with [Godot 4](https://godotengine.org). Pick **V
 
 `./install.sh` also adds **SpiderVenomn 3D** to your app menu. After that, `git pull` is all you need for updates.
 
-After the title screen you choose your hero (A/D or 1-3, then Space). Press **H** on the pause or end screen to change hero.
+After the title screen you choose your hero (A/D or 1-4, then Space). Press **H** on the pause or end screen to change hero.
 
 Controls for both heroes:
 
@@ -49,7 +49,7 @@ Controls for both heroes:
 | W A S D | Run (relative to the camera) |
 | Mouse | Look around and aim (crosshair) |
 | Left click (J) | Punch |
-| Shift (hold) | Swing: aim at a skyscraper (or up at the sky). Jamie's Dad sprints instead |
+| Shift (hold) | Swing: aim at a skyscraper (or up at the sky). Jamie's Dad sprints instead, Jamie uses his jetpack |
 | Esc | Pause (R restart, H change hero, Q quit) |
 | F11 / M | Fullscreen / music on-off |
 
@@ -62,6 +62,13 @@ Controls for both heroes:
 | Shift | Swing on a tendril | Web-swing: faster, higher and cheaper | **Super-sprint** (32 m/s): anything he runs into is flattened |
 | Special | | Run into a wall to crawl up it (Space leaps off, Ctrl climbs down) | **Super health**: 300 HP, and it heals itself when he's not being hit |
 | F (full energy) | **Symbiote blast**: wipes out every robot nearby, a fifth of Mr Poo's health | **Web storm**: webs up and hurts every robot nearby, 15% of Mr Poo's health | **Dad smash**: knocks out every robot nearby, a quarter of Mr Poo's health |
+
+**Jamie** is invincible, very good looking, very smart and very strong:
+
+- **Invincible:** nothing can hurt him (robots, poo, shockwaves, falling in the pit). A golden force field flashes up when something tries. You can't lose as Jamie.
+- **Smart:** he built his own gadgets. **Shift (hold)** fires up his jetpack (it uses energy, about 8 seconds on a full bar). **Right click** fires a smart shot that steers itself into the nearest robot.
+- **Strong:** **left click** is a punch that nearly knocks a robot out in one go.
+- **F (full energy): Genius hack.** Every robot nearby is hacked, shuts down and blows up. Mr Poo loses a fifth of his health and freezes for 3 seconds.
 
 Run down the avenue between the skyscrapers. Ride the yellow sky-lifts over the two broken bits of road, or swing or fly across. Falling in costs 15 health. At the end of the street is a plaza. When you go in, the gate shuts behind you and Mr Poo wakes up. He hops at you and lobs poo that leaves slippery puddles. At half health he gets angry: he throws more poo, his landings send out shockwaves you have to jump over, and he spawns mini-poos.
 

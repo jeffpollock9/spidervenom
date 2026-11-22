@@ -78,6 +78,10 @@ func run() -> void:
 		await spiderman_tests()
 		_finish(t0)
 		return
+	if OS.get_cmdline_user_args().has("--jamie-only"):
+		await jamie_tests()
+		_finish(t0)
+		return
 	if OS.get_cmdline_user_args().has("--dad-only"):
 		await dad_tests()
 		_finish(t0)
@@ -315,6 +319,7 @@ func run() -> void:
 
 	await spiderman_tests()
 	await dad_tests()
+	await jamie_tests()
 	_finish(t0)
 
 
@@ -343,9 +348,12 @@ func spiderman_tests() -> void:
 	game.choose_hero(1)
 	check(game.player is JamiesDad, "hero select picks Jamie's Dad")
 	game.choose_hero(1)
+	check(game.player is Jamie, "hero select picks Jamie")
+	game.choose_hero(1)
 	check(game.player is Venom, "hero select wraps round to Venom")
 	game.choose_hero(-1)
-	game.choose_hero(-1)
+	check(game.player is Jamie, "hero select wraps backwards to Jamie")
+	game.choose_hero(-2)
 	check(game.player is Spiderman, "hero select goes backwards too")
 	game.start_play()
 
@@ -709,3 +717,122 @@ func dad_tests() -> void:
 	cur = Controls.new()
 	await frames(220)
 	check(game.finished == "won", "Jamie's Dad saves Supercity (%s)" % game.finished)
+
+
+func jamie_tests() -> void:
+	print("  --- Jamie")
+	game.state = "title"
+	game.hero_id = "jamie"
+	game.new_game()
+	game.open_select()
+	await frames(40)
+	await shot("jamie_select")
+	if shots_dir != "":  # that face
+		game.rig.height = 1.75
+		game.rig.pitch = 0.0
+		game.rig.shoulder = 0.0
+		game.rig.arm.spring_length = 1.4
+		await frames(5)
+		await shot("jamie_face")
+	game.start_play()
+
+	# --- invincible: nothing hurts him, not even falling in the pit
+	var p := await fresh()
+	clear_enemies()
+	check(p is Jamie and p.invincible, "playing as Jamie")
+	var hp0 := p.hp
+	p.take_damage(1000.0, p.global_position + Vector3.RIGHT)
+	await frames(30)
+	check(p.hp == hp0 and not p.dead, "1000 damage does nothing to him")
+	p.global_position = Vector3(81, 3, 5)
+	await frames(120)
+	check(p.hp == hp0 and p.global_position.distance_to(p.safe_pos) < 3.0, "falling in the pit doesn't hurt him either")
+
+	# --- strong punch
+	p = await fresh()
+	clear_enemies()
+	var foe: Enemy = game.spawn_enemy("walker", p.global_position + Vector3(2.0, 0.3, 0))
+	await frames(3)
+	cur.aim_override = foe.center()
+	cur.primary_pressed = true
+	await frames(3)
+	check(not is_instance_valid(foe) or foe.hp <= foe.max_hp - 36.0, "a strong punch (hp left %d)" % (foe.hp if is_instance_valid(foe) else 0))
+	cur = Controls.new()
+	await frames(30)
+
+	# --- smart shot steers itself into a robot he isn't even aiming at
+	clear_enemies()
+	foe = game.spawn_enemy("shooter", p.global_position + Vector3(14, 0.3, 7))
+	await frames(3)
+	cur.aim_override = p.global_position + Vector3(20, 2.0, -6)  # aiming well off to the side
+	cur.special_pressed = true
+	await frames(60)
+	check(not is_instance_valid(foe) or foe.hp < foe.max_hp, "smart shot finds the robot by itself")
+	cur = Controls.new()
+
+	# --- jetpack
+	p = await fresh()
+	clear_enemies()
+	var y0 := p.global_position.y
+	cur.alt_held = true
+	cur.move = Vector2(0, 1)
+	var top := y0
+	for i in 90:
+		await frames(1)
+		top = max(top, p.global_position.y)
+		if i == 60:
+			await shot("jamie_jetpack")
+	check(top - y0 > 8.0 and p.energy < 90.0, "SHIFT jetpack flies him up (%.1f m, energy %d)" % [top - y0, p.energy])
+	cur = Controls.new()
+	await frames(150)
+	check(p.is_on_floor(), "lets go of SHIFT and lands")
+
+	# --- GENIUS HACK
+	p = await fresh()
+	clear_enemies()
+	var foes: Array = []
+	for k in 5:
+		foes.append(game.spawn_enemy("walker", p.global_position + Vector3(8 + k * 5, 0.3, -6 + k * 3)))
+	await frames(3)
+	p.energy = 100.0
+	cur.ult_pressed = true
+	await frames(5)
+	await shot("jamie_hack")
+	var hacked := 0
+	for e in foes:
+		if not is_instance_valid(e) or e.dead:
+			hacked += 1
+	check(hacked == 5, "GENIUS HACK shuts down every robot (%d/5)" % hacked)
+	cur = Controls.new()
+
+	# --- Jamie vs Mr Poo: he can't lose
+	p = await fresh()
+	clear_enemies()
+	p.global_position = Vector3(275, 0.3, 0)
+	await frames(150)
+	var boss: MrPoo = game.boss
+	var hp_start := boss.hp
+	var damage := 0.0
+	for f in 60 * 12:  # stand right next to him the whole time
+		if not is_instance_valid(boss) or boss.dead:
+			break
+		cur.aim_override = boss.center()
+		var to := boss.global_position - p.global_position
+		game.rig.face_dir(Vector3(to.x, 0, to.z).normalized())
+		var close := Vector2(to.x, to.z).length() < p.punch_reach + boss.radius
+		cur.move = Vector2.ZERO if close else Vector2(0, 1)
+		cur.primary_pressed = close and p.cd <= 0.0
+		cur.special_pressed = not close and p.cd <= 0.0 and f % 20 == 0
+		await frames(1)
+		if is_instance_valid(boss):
+			damage = hp_start - boss.hp
+		if f == 200:
+			await shot("jamie_boss")
+	check(damage > 150.0, "Jamie batters Mr Poo (%.0f damage)" % damage)
+	check(p.hp == p.max_hp and not p.dead and game.state == "play" or game.state == "won",
+		"Mr Poo can't hurt him (hp %d, %s)" % [p.hp, game.state])
+	if is_instance_valid(boss) and not boss.dead:
+		boss.hurt(1e6, Vector3.ZERO)
+	cur = Controls.new()
+	await frames(220)
+	check(game.finished == "won", "Jamie saves Supercity (%s)" % game.finished)

@@ -80,6 +80,12 @@ func web(secs: float) -> void:
 	cocoon.visible = true
 
 
+func daze(secs: float) -> void:
+	## Frozen on the spot for a moment (Jamie's hack), no web.
+	if active and not dead:
+		stun_t = max(stun_t, secs)
+
+
 func _go(s: String, tm: float) -> void:
 	state = s
 	timer = tm

@@ -30,7 +30,9 @@ var air_jumps := 0
 var can_sprint := false            # SHIFT sprints instead of swinging
 var sprint_speed := 30.0
 var can_pound := false             # CTRL in mid-air slams down
-var regen := 0.0                   # health per second, once he's gone a while without a hit
+var regen := 0.0
+var invincible := false            # nothing can hurt him
+var can_jetpack := false           # SHIFT (hold) is a jetpack                   # health per second, once he's gone a while without a hit
 var ult_ready_text := "F: ULTIMATE READY!"
 var hint := ""
 var rope_radius := 0.12
@@ -72,6 +74,7 @@ var sprinting := false
 var pounding := false
 var hurt_t := 99.0
 var ram_cd := 0.0
+var jetting := false
 
 
 func _init(g) -> void:
@@ -136,6 +139,8 @@ func info_line() -> String:
 		return "FLYING"
 	if climbing:
 		return "WALL-CRAWLING"
+	if jetting:
+		return "JETPACK"
 	if energy >= 100:
 		return ult_ready_text
 	return ""
@@ -162,7 +167,12 @@ func tick(ctl: Controls, dt: float) -> void:
 	if wish.length() > 1.0:
 		wish = wish.normalized()
 
-	if can_sprint:
+	if can_jetpack:
+		var was_jet := jetting
+		jetting = ctl.alt_held and energy > 1.0
+		if jetting and not was_jet:
+			game.audio.play("whoosh")
+	elif can_sprint:
 		var was := sprinting
 		sprinting = ctl.alt_held and wish.length() > 0.1
 		if sprinting and not was:
@@ -242,8 +252,12 @@ func walk_move(ctl: Controls, wish: Vector3, dt: float) -> void:
 		pounding = true  # GROUND POUND: straight down, fast
 		velocity = Vector3(velocity.x * 0.2, -40.0, velocity.z * 0.2)
 		game.audio.play("whoosh")
+	if jetting:  # thrust up, burning energy
+		velocity.y = min(velocity.y + 62.0 * dt, 11.0)
+		energy = max(0.0, energy - 26.0 * dt)
+		coyote = 0.0
 	var g := GRAVITY
-	if not ctl.jump_held and velocity.y > 0.0:
+	if not ctl.jump_held and velocity.y > 0.0 and not jetting:
 		g *= 2.2
 	velocity.y = max(velocity.y - g * dt, -40.0)
 	move_and_slide()
@@ -425,6 +439,10 @@ func _pound_landed() -> void:
 	pass
 
 
+func _blocked() -> void:
+	pass  # an invincible hero shrugged off a hit
+
+
 func rams() -> bool:
 	## True while he's running fast enough to flatten whatever he runs into.
 	return sprinting and Vector2(velocity.x, velocity.z).length() > speed * 1.2
@@ -432,6 +450,13 @@ func rams() -> bool:
 
 func take_damage(amount: float, from_pos: Vector3, knock := 8.0) -> bool:
 	if invuln > 0.0 or dead:
+		return false
+	if invincible:  # bounces right off
+		var push := global_position - from_pos
+		push.y = 0
+		velocity += push.normalized() * min(knock, 6.0) if push.length() > 0.01 else Vector3.ZERO
+		invuln = 0.4
+		_blocked()
 		return false
 	hp -= amount
 	invuln = 0.9
@@ -462,8 +487,11 @@ func fell() -> void:
 	flying = false
 	global_position = safe_pos + Vector3.UP * 0.5
 	velocity = Vector3.ZERO
-	hp -= 15.0
 	invuln = 1.2
+	if invincible:
+		_blocked()
+		return
+	hp -= 15.0
 	game.audio.play("hurt")
 	game.popup(center() + Vector3.UP, "-15", Color(1, 0.35, 0.35))
 	if hp <= 0.0:
