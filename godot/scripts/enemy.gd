@@ -19,6 +19,8 @@ var dead := false
 var dir := Vector3.LEFT   # patrol direction
 var face_yaw := 0.0
 var rng := RandomNumberGenerator.new()
+var stun_t := 0.0          # webbed up by Spider-Man: can't move or shoot
+var cocoon: Node3D
 
 
 func _init(g, k: String) -> void:
@@ -68,6 +70,17 @@ func hurt(dmg: float, push: Vector3, knock := 8.0) -> void:
 		die()
 
 
+func web(secs: float) -> void:
+	if dead:
+		return
+	stun_t = max(stun_t, secs)
+	if cocoon == null:
+		cocoon = Models.web_cocoon(radius * 1.5, height * 1.1)
+		cocoon.position.y = height * 0.5
+		add_child(cocoon)
+	cocoon.visible = true
+
+
 func die() -> void:
 	dead = true
 	game.burst(center(), Color(1.0, 0.85, 0.4), 18, 8.0)
@@ -84,7 +97,14 @@ func tick(dt: float) -> void:
 	var dist := flat.length()
 	var can_see: bool = not player.dead
 	var h := Vector2(velocity.x, velocity.z)
-	match kind:
+	var k := kind
+	if stun_t > 0.0:
+		stun_t -= dt
+		k = "stuck"
+		h = h.move_toward(Vector2.ZERO, 30.0 * dt)
+		if stun_t <= 0.0 and cocoon:
+			cocoon.visible = false
+	match k:
 		"walker":
 			var chase: bool = can_see and dist < 18.0 and abs(to.y) < 3.5
 			if chase:

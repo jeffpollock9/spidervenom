@@ -134,6 +134,9 @@ func _ground() -> void:
 		solid_box(Vector3(cx, -1, 0), Vector3(len_x, 2, 18), road)
 		for side: int in [-1, 1]:
 			solid_box(Vector3(cx, -0.9, side * 10.5), Vector3(len_x, 2.2, 3), pave)
+			# ground behind the pavement, under the buildings, so the alleys between them
+			# and the strip along their walls have a floor (Spider-Man climbs down there)
+			solid_box(Vector3(cx, -0.9, side * 26.0), Vector3(len_x, 2.2, 28), pave)
 			deco(Vector3(cx, 0.21, side * 9.0), Vector3(len_x, 0.06, 0.25), kerb)
 		var x: float = sp.x + 2
 		while x < sp.y - 3:

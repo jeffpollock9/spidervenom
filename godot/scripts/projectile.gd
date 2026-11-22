@@ -12,6 +12,7 @@ var grav := 0.0
 var life := 2.0
 var knock := 8.0
 var pierce := false
+var web_secs := 0.0
 var dead := false
 var age := 0.0
 var hit_ids := {}
@@ -29,6 +30,7 @@ func setup(g, pos: Vector3, v: Vector3, side: String, k: String, dmg: float, r: 
 	life = opts.get("life", 2.0)
 	knock = opts.get("knock", 8.0)
 	pierce = opts.get("pierce", false)
+	web_secs = opts.get("web", 0.0)
 	match kind:
 		"symbiote":
 			var black := Models.mat(Models.VENOM_BLACK, 0.2, 0.3, 0.0, 0.8)
@@ -36,6 +38,15 @@ func setup(g, pos: Vector3, v: Vector3, side: String, k: String, dmg: float, r: 
 			for i in 3:
 				Models.part(self, Models.sphere(r * 0.45, 8), black, Vector3(r, 0, 0))
 			Models.part(self, Models.sphere(r * 0.25, 8), Models.mat(Color(0.4, 0.4, 0.65), 0.2), Vector3(-r * 0.4, r * 0.4, -r * 0.5))
+		"web":
+			var white := Models.mat(Color(0.96, 0.96, 1.0), 0.4, 0.0, 0.3)
+			Models.part(self, Models.sphere(r * 0.6, 10), white)
+			for i in 4:  # strands trailing out behind
+				var a := i * TAU / 4.0
+				var mi := Models.part(self, Models.cylinder(0.015, 0.015, r * 3.0, 4), white,
+					Vector3(cos(a), sin(a), 0) * r * 0.6 + Vector3(0, 0, r * 1.2))
+				mi.rotation = Vector3(PI / 2 + sin(a) * 0.35, 0, 0)
+				mi.rotation.y = -cos(a) * 0.35
 		"bolt":
 			Models.part(self, Models.capsule(r * 0.6, r * 4.0), Models.mat(Color(1, 0.2, 0.15), 0.3, 0.0, 3.0),
 				Vector3.ZERO, Vector3(PI / 2, 0, 0))
@@ -75,6 +86,8 @@ func tick(dt: float) -> void:
 			if position.distance_to(e.center()) < radius + e.radius + 0.3:
 				hit_ids[e.get_instance_id()] = true
 				e.hurt(damage, vel, knock)
+				if web_secs > 0.0 and is_instance_valid(e) and not e.dead:
+					e.web(web_secs)
 				if not pierce:
 					kill(false)
 					return
@@ -97,6 +110,8 @@ func kill(hit_ground: bool) -> void:
 				game.add_puddle(position)
 		"symbiote":
 			game.burst(position, Color(0.08, 0.08, 0.12), 8, 6.0)
+		"web":
+			game.burst(position, Color(0.95, 0.95, 1.0), 8, 5.0)
 		_:
 			game.burst(position, Color(1, 0.5, 0.2), 6, 5.0)
 	queue_free()

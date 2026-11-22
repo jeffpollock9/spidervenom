@@ -340,6 +340,139 @@ static func _bone(parent: Node3D, a: Vector3, b: Vector3, material: Material, r:
 	mi.basis = Basis(Quaternion(Vector3.UP, dir))
 
 
+# --------------------------------------------------------------------------- Spider-Man
+
+const SPIDEY_SIZE := 0.7  # built on the same ~2.7 m skeleton as Venom, then scaled to ~1.9 m
+const SPIDEY_RED := Color(0.8, 0.05, 0.08)
+const SPIDEY_BLUE := Color(0.07, 0.14, 0.62)
+
+
+static func spidey_red() -> StandardMaterial3D:
+	## Red suit fabric with black web lines (a procedural texture, projected triplanar).
+	if not _mats.has("spidey_red"):
+		var n := 128
+		var img := Image.create(n, n, false, Image.FORMAT_RGB8)
+		img.fill(SPIDEY_RED)
+		var line := Color(0.08, 0.02, 0.02)
+		for i in n:
+			for w in 2:
+				img.set_pixel(i, w, line)                         # horizontal strand
+				img.set_pixel(w, i, line)                         # vertical strand
+				img.set_pixel(i, (i + w) % n, line)               # diagonals
+				img.set_pixel(i, (n - 1 - i + w) % n, line)
+		img.generate_mipmaps()
+		var m := StandardMaterial3D.new()
+		m.albedo_texture = ImageTexture.create_from_image(img)
+		m.roughness = 0.55
+		m.uv1_triplanar = true
+		m.uv1_scale = Vector3(3.5, 3.5, 3.5)
+		m.rim_enabled = true
+		m.rim = 0.3
+		_mats["spidey_red"] = m
+	return _mats["spidey_red"]
+
+
+static func spiderman() -> Dictionary:
+	var root := Node3D.new()
+	root.name = "SpidermanModel"
+	root.scale = Vector3.ONE * SPIDEY_SIZE
+	var red := spidey_red()
+	var blue := mat(SPIDEY_BLUE, 0.5, 0.0, 0.0, 0.3)
+	var black := mat(Color(0.03, 0.03, 0.04), 0.4)
+	var lens := mat(Color(0.95, 0.97, 1.0), 0.15, 0.0, 0.3)
+	var d := {"root": root}
+
+	# legs: blue tights, red boots
+	for side: int in [-1, 1]:
+		var s := "l" if side < 0 else "r"
+		var hip := pivot(root, Vector3(0.2 * side, 1.08, 0.0), "leg_" + s)
+		_muscle(hip, 0.17, blue, Vector3(0, -0.05, 0), Vector3.ONE)
+		part(hip, capsule(0.15, 0.66), blue, Vector3(0, -0.28, 0))
+		_muscle(hip, 0.12, blue, Vector3(0, -0.24, -0.06), Vector3(1.0, 1.8, 0.8))
+		var knee := pivot(hip, Vector3(0, -0.56, 0), "shin_" + s)
+		part(knee, capsule(0.11, 0.42), blue, Vector3(0, -0.12, 0))
+		part(knee, capsule(0.115, 0.36), red, Vector3(0, -0.36, 0))  # boot
+		var ankle := pivot(knee, Vector3(0, -0.5, 0), "foot_" + s)
+		_muscle(ankle, 0.1, red, Vector3(0, -0.02, -0.08), Vector3(1.0, 0.6, 1.9))
+		d["leg_" + s] = hip
+		d["shin_" + s] = knee
+
+	# torso: a lean athlete. Red front and back, blue sides, red belt
+	var torso := pivot(root, Vector3(0, 1.0, 0), "torso")
+	d["torso"] = torso
+	_muscle(torso, 0.22, blue, Vector3(0, 0.08, 0), Vector3(1.15, 0.65, 0.85))
+	part(torso, cylinder(0.25, 0.25, 0.1, 16), red, Vector3(0, 0.17, 0), Vector3.ZERO, Vector3(1.0, 1.0, 0.8))  # belt
+	part(torso, capsule(0.25, 0.7), blue, Vector3(0, 0.38, 0.0), Vector3.ZERO, Vector3(1.05, 1.0, 0.75))
+	_muscle(torso, 0.2, red, Vector3(0, 0.4, -0.05), Vector3(0.75, 1.3, 0.8))  # red front panel
+	var chest := pivot(torso, Vector3(0, 0.78, 0), "chest")
+	d["chest"] = chest
+	_muscle(chest, 0.36, blue, Vector3(0, 0.0, 0.02), Vector3(1.15, 0.85, 0.7))
+	_muscle(chest, 0.34, red, Vector3(0, 0.04, 0.0), Vector3(0.95, 0.85, 0.78))
+	_muscle(chest, 0.28, red, Vector3(0, 0.18, 0.03), Vector3(1.35, 0.45, 0.8))  # shoulders
+	for side: int in [-1, 1]:
+		_muscle(chest, 0.16, red, Vector3(0.14 * side, 0.06, -0.15), Vector3(1.1, 0.75, 0.55))  # pecs
+	# black spider emblem
+	_muscle(chest, 0.05, black, Vector3(0, 0.1, -0.27), Vector3(0.7, 1.0, 0.4))
+	_muscle(chest, 0.06, black, Vector3(0, -0.01, -0.26), Vector3(0.7, 1.4, 0.4))
+	for side: int in [-1, 1]:
+		for k in 4:
+			part(chest, box(Vector3(0.14, 0.018, 0.02)), black,
+				Vector3(0.07 * side, 0.12 - k * 0.05, -0.27), Vector3(0, 0, (0.7 - k * 0.45) * side))
+	part(chest, capsule(0.12, 0.35), red, Vector3(0, 0.33, -0.02))  # neck
+
+	# arms: blue, with red shoulders and gloves
+	for side: int in [-1, 1]:
+		var s := "l" if side < 0 else "r"
+		var sh := pivot(chest, Vector3(0.45 * side, 0.18, 0.02), "arm_" + s)
+		_muscle(sh, 0.15, red, Vector3(0.02 * side, 0.0, 0), Vector3.ONE)
+		part(sh, capsule(0.1, 0.58), blue, Vector3(0, -0.3, 0))
+		_muscle(sh, 0.085, blue, Vector3(0, -0.27, -0.05), Vector3(1.0, 1.8, 1.0))
+		var elbow := pivot(sh, Vector3(0, -0.56, 0), "fore_" + s)
+		part(elbow, capsule(0.085, 0.36), blue, Vector3(0, -0.12, 0))
+		part(elbow, capsule(0.09, 0.3), red, Vector3(0, -0.36, 0))  # glove
+		var wrist := pivot(elbow, Vector3(0, -0.5, 0), "hand_" + s)
+		_muscle(wrist, 0.075, red, Vector3(0, -0.05, 0), Vector3(1.0, 1.2, 0.6))
+		for f in 4:
+			part(wrist, capsule(0.018, 0.12), red, Vector3((f - 1.5) * 0.035, -0.14, -0.01))
+		d["arm_" + s] = sh
+		d["fore_" + s] = elbow
+		d["hand_" + s] = wrist
+
+	# head: the mask with big white lenses ringed in black
+	var head := pivot(chest, Vector3(0, 0.55, -0.04), "head")
+	d["head"] = head
+	_muscle(head, 0.2, red, Vector3(0, 0.03, 0), Vector3(0.95, 1.15, 1.05))
+	_muscle(head, 0.13, red, Vector3(0, -0.1, -0.08), Vector3(0.9, 0.8, 0.9))  # chin
+	for side: int in [-1, 1]:
+		part(head, sphere(0.078), black, Vector3(0.075 * side, 0.06, -0.17),
+			Vector3(0, 0.4 * side, 0.55 * side), Vector3(1.5, 1.0, 0.4))
+		part(head, sphere(0.064), lens, Vector3(0.078 * side, 0.06, -0.192),
+			Vector3(0, 0.4 * side, 0.55 * side), Vector3(1.5, 1.0, 0.4))
+	return d
+
+
+static func web_cocoon(r: float, h: float) -> Node3D:
+	## A white web wrapping round a stuck enemy.
+	var n := Node3D.new()
+	var web := StandardMaterial3D.new()
+	web.albedo_color = Color(0.95, 0.95, 1.0, 0.55)
+	web.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	web.roughness = 0.6
+	part(n, sphere(1.0, 12), web, Vector3.ZERO, Vector3.ZERO, Vector3(r, h * 0.5, r))
+	var strand := mat(Color(0.97, 0.97, 1.0), 0.5, 0.0, 0.2)
+	for i in 5:
+		var ring := TorusMesh.new()
+		ring.inner_radius = 0.95
+		ring.outer_radius = 1.0
+		ring.rings = 24
+		ring.ring_segments = 4
+		var mi := part(n, ring, strand, Vector3(0, (i - 2) * h * 0.17, 0))
+		var w := sqrt(max(0.05, 1.0 - pow((i - 2) * 0.34, 2)))
+		mi.scale = Vector3(r * w * 1.03, 1.0, r * w * 1.03)
+		mi.rotation = Vector3(0.25 * ((i % 2) * 2 - 1), 0, 0.2)
+	return n
+
+
 # --------------------------------------------------------------------------- Supercity robots
 
 static func robot(shooter: bool) -> Dictionary:

@@ -24,6 +24,8 @@ var dead := false
 var face_yaw := PI / 2
 var was_on_floor := true
 var rng := RandomNumberGenerator.new()
+var stun_t := 0.0
+var cocoon: Node3D
 
 
 func _init(g) -> void:
@@ -66,6 +68,18 @@ func hurt(dmg: float, _push: Vector3, _knock := 0.0) -> void:
 		game.boss_defeated(self)
 
 
+func web(secs: float) -> void:
+	## Webs only hold him for a moment: he's a very big poo.
+	if not active or dead:
+		return
+	stun_t = max(stun_t, secs * 0.35)
+	if cocoon == null:
+		cocoon = Models.web_cocoon(radius * 1.15, height * 1.05)
+		cocoon.position.y = height * 0.5
+		add_child(cocoon)
+	cocoon.visible = true
+
+
 func _go(s: String, tm: float) -> void:
 	state = s
 	timer = tm
@@ -78,7 +92,11 @@ func tick(dt: float) -> void:
 	var to: Vector3 = player.global_position - global_position
 	var flat := Vector3(to.x, 0, to.z)
 	var speed := 1.3 if phase == 2 else 1.0
-	if active and not dead:
+	if stun_t > 0.0:
+		stun_t -= dt
+		if stun_t <= 0.0 and cocoon:
+			cocoon.visible = false
+	elif active and not dead:
 		timer -= dt * speed
 		_think(player, flat, speed)
 	if is_on_floor():

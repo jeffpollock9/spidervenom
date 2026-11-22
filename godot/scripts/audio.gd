@@ -90,6 +90,7 @@ func _make_sfx() -> void:
 		"explode": [120, 30, 0.6, "square", 0.5, 0.85], "pickup": [600, 1300, 0.18, "tri", 0.3, 0.0],
 		"roar": [140, 50, 0.9, "saw", 0.45, 0.5], "splat": [150, 50, 0.25, "sine", 0.5, 0.6],
 		"select": [700, 1000, 0.06, "square", 0.2, 0.0], "flap": [120, 70, 0.12, "sine", 0.35, 0.4],
+		"web": [1500, 500, 0.09, "saw", 0.16, 0.55],
 	}
 	for k in defs:
 		var d: Array = defs[k]

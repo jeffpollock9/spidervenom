@@ -32,26 +32,35 @@ You can also jump on enemies' heads to squash them.
 
 ## SpiderVenomn 3D (new, work in progress)
 
-A third-person 3D version made with [Godot 4](https://godotengine.org). So far it has **Venom** in **Supercity** against **Mr Poo**.
+A third-person 3D version made with [Godot 4](https://godotengine.org). Pick **Venom** or **Spider-Man** and save **Supercity** from **Mr Poo**.
 
 ```bash
 ./run3d.sh     # downloads Godot 4.7.2 the first time (about 60 MB), then plays
 ```
 
-`./install.sh` also adds **SpiderVenomn 3D** to your app menu.
+`./install.sh` also adds **SpiderVenomn 3D** to your app menu. After that, `git pull` is all you need for updates.
+
+After the title screen you choose your hero (A/D or 1/2, then Space). Press **H** on the pause or end screen to change hero.
+
+Controls for both heroes:
 
 | Key | Action |
 |---|---|
 | W A S D | Run (relative to the camera) |
 | Mouse | Look around and aim (crosshair) |
-| Space | Jump. Press again in mid-air to fly on symbiote wings |
-| Space / Ctrl (while flying) | Fly up / fly down |
-| Left click (J) | Heavy punch |
-| Right click (K) | Symbiote blast at the crosshair |
-| Shift (hold) | Swing on a tendril: aim at a skyscraper (or up at the sky) |
-| F (full energy) | Symbiote blast: wipes out every robot nearby, and a fifth of Mr Poo's health |
-| Esc | Pause (R restart, Q quit) |
+| Left click (J) | Punch |
+| Shift (hold) | Swing: aim at a skyscraper (or up at the sky) |
+| Esc | Pause (R restart, H change hero, Q quit) |
 | F11 / M | Fullscreen / music on-off |
+
+| | Venom | Spider-Man |
+|---|---|---|
+| Size | A huge brute, about 3.8 m tall | Human-sized and fast |
+| Space in mid-air | Fly on symbiote wings (Space up, Ctrl down) | Somersault (a second jump) |
+| Right click (K) | Symbiote blast | Web shot: the robot is stuck in web for a few seconds |
+| Shift | Swing on a tendril | Web-swing: faster, higher and cheaper |
+| Special | | Run into a wall to crawl up it (Space leaps off, Ctrl climbs down) |
+| F (full energy) | **Symbiote blast**: wipes out every robot nearby, a fifth of Mr Poo's health | **Web storm**: webs up and hurts every robot nearby, 15% of Mr Poo's health |
 
 Run down the avenue between the skyscrapers. Ride the yellow sky-lifts over the two broken bits of road, or swing or fly across. Falling in costs 15 health. At the end of the street is a plaza. When you go in, the gate shuts behind you and Mr Poo wakes up. He hops at you and lobs poo that leaves slippery puddles. At half health he gets angry: he throws more poo, his landings send out shockwaves you have to jump over, and he spawns mini-poos.
 

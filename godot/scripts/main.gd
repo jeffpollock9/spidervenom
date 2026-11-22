@@ -1,11 +1,14 @@
 extends Node3D
-## SpiderVenomn 3D: Venom vs Mr Poo in Supercity.
+## SpiderVenomn 3D: pick a hero (Venom or Spider-Man) and save Supercity from Mr Poo.
 ## Owns the level, the hero, enemies, projectiles and effects, and runs the game states.
 
 var audio: GameAudio
 var level: LevelSupercity
 var world: Node3D
-var player: Venom
+const HEROES := ["venom", "spiderman"]
+
+var player: Hero
+var hero_id := "venom"
 var rig: CameraRig
 var hud: Hud
 var boss: MrPoo
@@ -16,7 +19,7 @@ var waves: Array = []       # expanding ground shockwaves from an angry Mr Poo
 var pickups: Array = []     # {node, kind, pos}
 var particles: Array = []
 var popups: Array = []
-var state := "title"        # title | play | paused | won | lost
+var state := "title"        # title | select | play | paused | won | lost
 var state_t := 0.0
 var finished := ""
 var gate_closed := false
@@ -42,7 +45,12 @@ func _ready() -> void:
 	hud_layer.add_child(hud)
 	new_game()
 	if args.has("--selftest"):
-		var st: Node = load("res://scripts/selftest.gd").new()
+		var script: GDScript = load("res://scripts/selftest.gd")
+		if script == null or not script.can_instantiate():
+			printerr("selftest failed to load")
+			get_tree().quit(1)
+			return
+		var st: Node = script.new()
 		st.game = self
 		add_child(st)
 	else:
@@ -64,17 +72,9 @@ func new_game() -> void:
 	add_child(world)
 	level = LevelSupercity.new()
 	world.add_child(level)
-	player = Venom.new(self)
-	player.position = level.start
-	world.add_child(player)
 	rig = CameraRig.new()
 	world.add_child(rig)
-	rig.target = player
-	rig.exclude(player)
-	rig.height = 2.0 * Venom.SIZE
-	rig.shoulder = 1.0 * Venom.SIZE
-	rig.arm.spring_length = 6.5 * Venom.SIZE
-	player.rig = rig
+	_spawn_player()
 	for s in level.spawns:
 		spawn_enemy(s[0], s[1])
 	for p in level.pickups:
@@ -92,7 +92,61 @@ func new_game() -> void:
 		start_play()
 
 
+static func make_hero(id: String, g) -> Hero:
+	match id:
+		"spiderman":
+			return Spiderman.new(g)
+	return Venom.new(g)
+
+
+func _spawn_player() -> void:
+	## (Re)build the chosen hero at the start of the street, and fit the camera to his size.
+	if player and is_instance_valid(player):
+		player.queue_free()
+	player = make_hero(hero_id, self)
+	player.position = level.start
+	world.add_child(player)
+	rig.target = player
+	rig.exclude(player)
+	player.rig = rig
+	_camera_for_play()
+
+
+func _camera_for_play() -> void:
+	rig.height = 2.0 * player.size
+	rig.shoulder = 1.0 * player.size
+	rig.arm.spring_length = 6.5 * player.size
+	rig.yaw = -PI / 2
+	rig.pitch = -0.18
+
+
+func _camera_for_select() -> void:
+	## Look at the hero from the front, with him off to the right of the menu text.
+	rig.height = 1.55 * player.size
+	rig.shoulder = -1.6 * player.size
+	rig.arm.spring_length = 4.6 * player.size
+	rig.face_dir(Vector3.LEFT)
+	rig.pitch = -0.08
+
+
+func open_select() -> void:
+	state = "select"
+	_camera_for_select()
+	rig.follow(0.0, true)
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+
+func choose_hero(step: int) -> void:
+	var i := (HEROES.find(hero_id) + step + HEROES.size()) % HEROES.size()
+	hero_id = HEROES[i]
+	_spawn_player()
+	_camera_for_select()
+	rig.follow(0.0, true)
+	audio.play("select")
+
+
 func start_play() -> void:
+	_camera_for_play()
 	state = "play"
 	banner("SUPERCITY", 2.2)
 	audio.music("supercity")
@@ -241,6 +295,31 @@ func symbiote_blast(at: Vector3) -> void:
 	banner("SYMBIOTE BLAST!", 1.2)
 
 
+func web_storm(at: Vector3) -> void:
+	## Spider-Man's ultimate: webs fly everywhere, wrapping up every robot nearby.
+	for e in targets():
+		if e.center().distance_to(at) >= 45.0:
+			continue
+		if e == boss:
+			boss.hurt(boss.max_hp * 0.15, Vector3.ZERO)
+			if not boss.dead:
+				boss.web(8.0)
+		else:
+			e.hurt(18.0, e.center() - at, 4.0)
+			if is_instance_valid(e) and not e.dead:
+				e.web(7.0)
+	for i in 32:
+		var a := i * TAU / 32.0
+		var dir := Vector3(cos(a), 0.35 * sin(a * 3.0) + 0.1, sin(a))
+		spawn_projectile(at + dir * 1.0, dir * 38.0, "player", "web", 8.0, 0.35,
+			{"life": 1.0, "pierce": true, "web": 7.0})
+	burst(at, Color(0.95, 0.95, 1.0), 60, 18.0)
+	audio.play("web")
+	audio.play("explode")
+	shake(0.7)
+	banner("WEB STORM!", 1.2)
+
+
 func ground_wave_fx(at: Vector3) -> void:
 	var n := MeshInstance3D.new()
 	var torus := TorusMesh.new()
@@ -283,9 +362,26 @@ func _unhandled_input(event: InputEvent) -> void:
 			if event is InputEventMouseButton and event.pressed or event is InputEventKey and event.pressed \
 					and not event.is_action("pause"):
 				audio.play("select")
-				start_play()
+				open_select()
 			elif event.is_action_pressed("pause"):
 				get_tree().quit()
+		"select":
+			if event.is_action_pressed("move_left"):
+				choose_hero(-1)
+			elif event.is_action_pressed("move_right"):
+				choose_hero(1)
+			elif event is InputEventKey and event.pressed and event.physical_keycode >= KEY_1 \
+					and event.physical_keycode < KEY_1 + HEROES.size():
+				var want: String = HEROES[event.physical_keycode - KEY_1]
+				if want != hero_id:
+					choose_hero(HEROES.find(want) - HEROES.find(hero_id))
+			elif event.is_action_pressed("jump") or event is InputEventMouseButton and event.pressed \
+					and event.button_index == MOUSE_BUTTON_LEFT \
+					or event is InputEventKey and event.pressed and event.physical_keycode == KEY_ENTER:
+				audio.play("select")
+				start_play()
+			elif event.is_action_pressed("pause"):
+				state = "title"
 		"play":
 			if event.is_action_pressed("pause"):
 				state = "paused"
@@ -299,6 +395,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif event.is_action_pressed("restart"):
 				state = "play"
 				new_game()
+			elif event is InputEventKey and event.pressed and event.physical_keycode == KEY_H:
+				state = "title"
+				new_game()
+				open_select()
 			elif event is InputEventKey and event.pressed and event.physical_keycode == KEY_Q:
 				get_tree().quit()
 		"won", "lost":
@@ -306,6 +406,10 @@ func _unhandled_input(event: InputEvent) -> void:
 					or event is InputEventKey and event.pressed and event.physical_keycode == KEY_ENTER):
 				state = "play"
 				new_game()
+			elif finished != "" and event is InputEventKey and event.pressed and event.physical_keycode == KEY_H:
+				state = "title"
+				new_game()
+				open_select()
 			elif finished != "" and event.is_action_pressed("pause"):
 				get_tree().quit()
 
@@ -317,6 +421,11 @@ func _notification(what: int) -> void:
 
 
 func _physics_process(dt: float) -> void:
+	if state == "select":  # let the chosen hero stand and breathe
+		var idle := Controls.new()
+		idle.aim_override = player.global_position + Vector3(10, 1, 0)
+		player.tick(idle, dt)
+		return
 	if state == "title" or state == "paused":
 		level.tick_lifts(0.0)
 		return
@@ -365,7 +474,7 @@ func _physics_process(dt: float) -> void:
 
 func _process(dt: float) -> void:
 	rig.follow(dt)
-	player.camera_close = rig.arm.get_hit_length() < 1.8 * Venom.SIZE
+	player.camera_close = rig.arm.get_hit_length() < 1.8 * player.size and state != "select"
 
 
 func _update_arena(dt: float) -> void:
@@ -420,7 +529,7 @@ func _contact_damage() -> void:
 		var ec: Vector3 = e.center()
 		var flat := Vector2(pc.x - ec.x, pc.z - ec.z).length()
 		var top: float = e.global_position.y + e.height
-		if flat > e.radius + 0.5 or feet.y > top + 0.2 or pc.y + 1.2 * Venom.SIZE < e.global_position.y:
+		if flat > e.radius + 0.5 or feet.y > top + 0.2 or pc.y + 1.2 * player.size < e.global_position.y:
 			continue
 		if player.velocity.y < -3.0 and feet.y > top - 0.7:
 			e.hurt(15.0 if e == boss else 25.0, Vector3.ZERO, 0.0)
