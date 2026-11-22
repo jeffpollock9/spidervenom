@@ -220,7 +220,7 @@ func _draw() -> void:
 				var won: bool = game.state == "won"
 				text("SUPERCITY IS SAVED!" if won else "DEFEATED!", Vector2(sz.x / 2, sz.y / 2 - 70), 80,
 					Color(1, 0.9, 0.3) if won else Color(1, 0.3, 0.3), HORIZONTAL_ALIGNMENT_CENTER, -1, 12)
-				var bn: String = {"mrpoo": "Mr Poo", "cattoon": "Ms Cattoon"}[game.boss_id]
+				var bn: String = game.BOSS_NAMES[game.boss_id]
 				text(("You beat %s!" % bn) if won else ("%s rules Supercity... for now." % bn), Vector2(sz.x / 2, sz.y / 2 - 10),
 					34, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 				text("SCORE %d     TIME %d:%02d" % [game.score, int(game.t) / 60, int(game.t) % 60],
@@ -235,7 +235,7 @@ func _draw_title(sz: Vector2) -> void:
 	text("VENOMN", Vector2(sz.x / 2 + 8, 130), 110, Color(0.06, 0.06, 0.08), HORIZONTAL_ALIGNMENT_LEFT, -1, 0)
 	_outline_white("VENOMN", Vector2(sz.x / 2 + 8, 130), 110)
 	text("3D", Vector2(sz.x / 2, 200), 60, Color(1, 0.9, 0.3), HORIZONTAL_ALIGNMENT_CENTER, -1, 10)
-	text("Save Supercity from Mr Poo and Ms Cattoon!", Vector2(sz.x / 2, 250), 30, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	text("Save Supercity from Mr Poo, Ms Cattoon and Venom!", Vector2(sz.x / 2, 250), 30, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	text("Seven heroes to choose from", Vector2(sz.x / 2, 330), 30, Color(1, 0.9, 0.45), HORIZONTAL_ALIGNMENT_CENTER)
 	var y := 400.0
 	for row in COMMON:
@@ -281,7 +281,7 @@ func _draw_select(sz: Vector2) -> void:
 	var bx := 40.0
 	var by := sz.y - 110
 	text("BOSS:", Vector2(bx, by + 24), 24, Color(1, 0.9, 0.45))
-	var names := {"mrpoo": "Mr Poo", "cattoon": "Ms Cattoon"}
+	var names: Dictionary = game.BOSS_NAMES
 	var bossx := bx + 90
 	for id in game.BOSSES:
 		var chosen: bool = id == game.boss_id

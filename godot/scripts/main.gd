@@ -13,7 +13,8 @@ var hero_id := "venom"
 var rig: CameraRig
 var hud: Hud
 var boss: Boss
-const BOSSES := ["mrpoo", "cattoon"]
+const BOSSES := ["mrpoo", "cattoon", "venom"]
+const BOSS_NAMES := {"mrpoo": "Mr Poo", "cattoon": "Ms Cattoon", "venom": "Venom"}
 var boss_id := "mrpoo"
 var stink_clouds: Array = []  # {node, pos, r, h, life, max, dmg, tick}
 var enemies: Array = []
@@ -102,6 +103,8 @@ func new_game() -> void:
 static func make_boss(id: String, g) -> Boss:
 	if id == "cattoon":
 		return Cattoon.new(g)
+	if id == "venom":
+		return VenomBoss.new(g)
 	return MrPoo.new(g)
 
 
@@ -259,14 +262,14 @@ func in_puddle(body: Node3D) -> bool:
 	return false
 
 
-func ground_wave(pos: Vector3, max_r: float, speed: float) -> void:
+func ground_wave(pos: Vector3, max_r: float, speed: float, colour := Color(0.5, 0.32, 0.12)) -> void:
 	## A ring of muck racing out across the ground. Jump over it!
 	var n := MeshInstance3D.new()
 	var torus := TorusMesh.new()
 	torus.inner_radius = 0.8
 	torus.outer_radius = 1.0
 	n.mesh = torus
-	n.material_override = Models.mat(Color(0.5, 0.32, 0.12), 0.4, 0.0, 0.3)
+	n.material_override = Models.mat(colour, 0.4, 0.0, 0.3)
 	n.position = pos + Vector3.UP * 0.2
 	world.add_child(n)
 	waves.append({"node": n, "pos": pos, "r": 1.0, "max": max_r, "speed": speed, "hit": false})

@@ -32,7 +32,7 @@ You can also jump on enemies' heads to squash them.
 
 ## SpiderVenomn 3D (new, work in progress)
 
-A third-person 3D version made with [Godot 4](https://godotengine.org). Pick **Venom**, **Spider-Man**, **Jamie's Dad**, **Jamie**, **Charley**, the **Hacker**, **Santa** or **Cammy** and save **Supercity** from **Mr Poo**.
+A third-person 3D version made with [Godot 4](https://godotengine.org). Pick **Venom**, **Spider-Man**, **Jamie's Dad**, **Jamie**, **Charley**, the **Hacker**, **Santa** or **Cammy** and save **Supercity** from **Mr Poo**, **Ms Cattoon** or **Venom**.
 
 ```bash
 ./run3d.sh     # downloads Godot 4.7.2 the first time (about 60 MB), then plays
@@ -110,6 +110,13 @@ Run down the avenue between the skyscrapers. Ride the yellow sky-lifts over the 
 - She stomps after you, and fires balls of stink that burst into clouds that hang about for a few seconds. Don't stand in them.
 - Get too close and she swings her handbag at you.
 - At half health she gets angry: her stink gets bigger, she fires three stink balls at a time, and every so often she puffs up ("!!!") and lets off a **STINK BOMB**, a huge cloud right round her. Get out of the way, or get up high above it (fly, jetpack, sleigh, or a platform won't do, it's not high enough!).
+
+**Venom** is a boss too: a giant symbiote monster nearly 7 metres tall, tongue and all. Pick him with W/S or Tab on the select screen.
+
+- He stalks after you and slashes with his claws if you get close.
+- He fires symbiote blasts, and pounces at you from a distance.
+- He lashes out a tendril that drags you over to him ("COME HERE!").
+- At half health he gets angry ("WE ARE VENOM!"): his wings come out and he flies up and dive-bombs you. His landings send out a ring of symbiote across the ground: jump over it!
 
 Everything is built in code (`godot/scripts/`): the models, the city and the sound. There are no asset files. Run the test with `./run3d.sh --selftest`.
 

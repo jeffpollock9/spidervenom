@@ -83,6 +83,10 @@ func run() -> void:
 		await spiderman_tests()
 		_finish(t0)
 		return
+	if OS.get_cmdline_user_args().has("--venomboss-only"):
+		await venom_boss_tests()
+		_finish(t0)
+		return
 	if OS.get_cmdline_user_args().has("--cammy-only"):
 		await cammy_tests()
 		_finish(t0)
@@ -346,6 +350,7 @@ func run() -> void:
 	await santa_tests()
 	await cammy_tests()
 	await cattoon_tests()
+	await venom_boss_tests()
 	_finish(t0)
 
 
@@ -1491,7 +1496,7 @@ func cattoon_tests() -> void:
 	await frames(10)
 	check(game.boss_id == "cattoon" and game.boss is Cattoon, "the select screen picks Ms Cattoon as the boss")
 	await shot("cattoon_select")
-	game.choose_boss(1)
+	game.choose_boss(-1)
 	check(game.boss is MrPoo, "and back to Mr Poo")
 	game.choose_boss(1)
 	game.start_play()
@@ -1627,3 +1632,148 @@ func cattoon_tests() -> void:
 	check(game.finished == "won", "beating Ms Cattoon wins (%s)" % game.finished)
 	await shot("cattoon_won")
 	game.boss_id = "mrpoo"
+
+
+func venom_boss_tests() -> void:
+	print("  --- Venom (the baddie)")
+	game.hero_id = "jamiesdad"
+	game.boss_id = "mrpoo"
+	game.state = "title"
+	game.new_game()
+	game.open_select()
+	game.choose_boss(-1)
+	await frames(10)
+	check(game.boss_id == "venom" and game.boss is VenomBoss, "the select screen picks Venom as the boss")
+	await shot("venomboss_select")
+	game.start_play()
+
+	# --- he wakes up in the plaza
+	var p := await fresh()
+	clear_enemies()
+	var boss: VenomBoss = game.boss
+	p.global_position = Vector3(275, 0.3, 0)
+	await frames(10)
+	check(game.banner_text == "BOSS: VENOM", "entering the plaza: %s" % game.banner_text)
+	await frames(140)
+	check(boss.active, "Venom wakes up")
+	if shots_dir != "":  # a good look at him
+		boss.daze(3.0)
+		boss.global_position = Vector3(290, 0.2, 0)
+		p.global_position = Vector3(272, 0.5, 0)
+		boss.face_yaw = PI / 2
+		await frames(20)
+		game.rig.face_dir(Vector3.RIGHT)
+		game.rig.pitch = 0.1
+		await frames(5)
+		await shot("venomboss")
+		await frames(1)
+
+	# --- get close and he slashes you
+	boss.stun_t = 0.0
+	p.global_position = boss.global_position + Vector3(-4.5, 0.5, 0)
+	p.velocity = Vector3.ZERO
+	p.invuln = 0.0
+	boss._go("slash", 0.4)
+	var hp0 := p.hp
+	await frames(40)
+	check(p.hp < hp0, "his claws slash you up close (%d -> %d)" % [hp0, p.hp])
+	p.hp = p.max_hp
+
+	# --- symbiote blasts from a distance
+	boss.daze(0.0)
+	p.global_position = boss.global_position + Vector3(-18, 0.5, 0)
+	p.velocity = Vector3.ZERO
+	await frames(10)
+	boss._go("blast", 0.1)
+	var blobs := 0
+	for i in 20:
+		await frames(1)
+		blobs = 0
+		for pr in game.projectiles:
+			if is_instance_valid(pr) and pr.kind == "symbiote" and pr.owner_side == "enemy":
+				blobs += 1
+		if blobs > 0:
+			break
+	check(blobs >= 3, "he fires symbiote blasts (%d)" % blobs)
+	await frames(6)
+	await shot("venomboss_blast")
+	await frames(60)
+
+	# --- the tendril drags you over to him
+	p.hp = p.max_hp
+	p.invuln = 0.0
+	p.global_position = boss.global_position + Vector3(-20, 0.5, 0)
+	p.velocity = Vector3.ZERO
+	await frames(5)
+	var d0: float = p.global_position.distance_to(boss.global_position)
+	boss._go("lash", 0.05)
+	await frames(4)
+	await shot("venomboss_lash")
+	await frames(20)
+	var d1: float = p.global_position.distance_to(boss.global_position)
+	check(d1 < d0 - 5.0, "his tendril yanks you over to him (%.0f m -> %.0f m)" % [d0, d1])
+	boss.daze(1.5)
+	await frames(100)
+
+	# --- angry: wings out, and he dive-bombs you
+	p.hp = p.max_hp
+	boss.hurt(boss.hp - boss.max_hp * 0.45, Vector3.ZERO)
+	check(boss.phase == 2, "Venom gets angry at half health")
+	boss.stun_t = 0.0
+	p.global_position = boss.global_position + Vector3(-14, 0.5, 0)
+	p.velocity = Vector3.ZERO
+	boss.choices = 2  # his next move is the dive
+	boss._go("walk", 0.05)
+	var high := 0.0
+	var dived := false
+	for i in 60 * 5:
+		await frames(1)
+		p.hp = p.max_hp
+		if boss.state == "dive":
+			dived = true
+			high = max(high, boss.global_position.y)
+			if i == 40:
+				await shot("venomboss_dive")
+		elif dived:
+			break
+	check(dived and high > 8.0, "an angry Venom flies up on his wings (%.0f m)" % high)
+	check(dived and boss.state != "dive" and boss.is_on_floor(), "and dive-bombs back down")
+	var waves := 0
+	for w in game.waves:
+		if not w["hit"]:
+			waves += 1
+	check(waves > 0, "the landing sends out a ring of symbiote to jump over")
+	check((boss.model["wings"] as Node3D).visible, "his wings are out")
+
+	# --- Jamie's Dad fights him
+	p = await fresh()
+	clear_enemies()
+	p.global_position = Vector3(275, 0.3, 0)
+	await frames(150)
+	boss = game.boss
+	var hp_start := boss.hp
+	var damage := 0.0
+	for f in 60 * 12:
+		if not is_instance_valid(boss) or boss.dead:
+			break
+		p.hp = p.max_hp
+		cur.aim_override = boss.center()
+		var to := boss.global_position - p.global_position
+		cur.move = Vector2(0, 1) if Vector2(to.x, to.z).length() > 14.0 else Vector2(0, -0.6)
+		game.rig.face_dir(Vector3(to.x, 0, to.z).normalized())
+		cur.special_pressed = f % 25 == 0
+		await frames(1)
+		if is_instance_valid(boss):
+			damage = hp_start - boss.hp
+		if f == 240:
+			await shot("venomboss_fight")
+	check(damage > 150.0, "Jamie's Dad batters Venom (%.0f damage)" % damage)
+	if is_instance_valid(boss) and not boss.dead:
+		boss.hurt(1e6, Vector3.ZERO)
+	cur = Controls.new()
+	await frames(10)
+	check(game.banner_text == "VENOM DEFEATED!", "banner: %s" % game.banner_text)
+	await frames(220)
+	check(game.finished == "won", "beating Venom wins (%s)" % game.finished)
+	game.boss_id = "mrpoo"
+	game.hero_id = "venom"
