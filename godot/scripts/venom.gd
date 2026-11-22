@@ -10,7 +10,8 @@ const FLY_SPEED := 15.0
 const FLY_CEILING := 92.0
 const MAX_HP := 140.0
 const PUNCH_DAMAGE := 20.0
-const PUNCH_REACH := 3.2
+const PUNCH_REACH := 4.0
+const SIZE := Models.VENOM_SIZE  # he's a big lad: everything below scales with this
 const BLAST_COST := 14.0
 const SWING_COST := 3.0
 
@@ -41,7 +42,7 @@ var aim := Vector3.ZERO
 var message := ""
 var message_t := 0.0
 var tendril: Node3D
-var radius := 0.55
+var radius := 0.55 * SIZE
 var camera_close := false  # hide the model when the camera is jammed against him
 
 
@@ -56,29 +57,28 @@ func _init(g) -> void:
 func _ready() -> void:
 	var shape := CollisionShape3D.new()
 	var cap := CapsuleShape3D.new()
-	cap.radius = 0.5
-	cap.height = 2.3
+	cap.radius = 0.5 * SIZE
+	cap.height = 2.5 * SIZE
 	shape.shape = cap
-	shape.position.y = 1.15
+	shape.position.y = 1.25 * SIZE
 	add_child(shape)
 	model = Models.venom()
 	add_child(model["root"])
 	tendril = Node3D.new()
 	tendril.top_level = true
 	add_child(tendril)
-	var black := Models.mat(Models.VENOM_BLACK, 0.25, 0.2, 0.0, 0.6)
 	for i in 14:
-		Models.part(tendril, Models.cylinder(0.09, 0.09, 1.0, 6), black)
+		Models.part(tendril, Models.cylinder(0.12, 0.12, 1.0, 8), Models.venom_skin())
 	tendril.visible = false
 	safe_pos = global_position
 
 
 func center() -> Vector3:
-	return global_position + Vector3(0, 1.3, 0)
+	return global_position + Vector3(0, 1.3 * SIZE, 0)
 
 
 func hand() -> Vector3:
-	return global_position + Vector3(0, 1.9, 0) + Vector3(-sin(face_yaw), 0, -cos(face_yaw)) * 0.7
+	return global_position + Vector3(0, 1.9 * SIZE, 0) + Vector3(-sin(face_yaw), 0, -cos(face_yaw)) * 0.7 * SIZE
 
 
 func say(text: String, secs := 1.4) -> void:
@@ -360,43 +360,83 @@ func _animate(dt: float) -> void:
 	root.rotation.y = face_yaw
 	root.visible = (dead or invuln <= 0.0 or int(invuln * 20.0) % 2 == 1) and not camera_close
 	var torso: Node3D = model["torso"]
+	var chest: Node3D = model["chest"]
+	var head: Node3D = model["head"]
 	var leg_l: Node3D = model["leg_l"]
 	var leg_r: Node3D = model["leg_r"]
+	var shin_l: Node3D = model["shin_l"]
+	var shin_r: Node3D = model["shin_r"]
 	var arm_l: Node3D = model["arm_l"]
 	var arm_r: Node3D = model["arm_r"]
+	var fore_l: Node3D = model["fore_l"]
+	var fore_r: Node3D = model["fore_r"]
 	var hspeed := Vector2(velocity.x, velocity.z).length()
-	walk_phase += hspeed * dt * 1.5
-	var swing_amt: float = min(1.0, hspeed / SPEED) if is_on_floor() else 0.0
-	var s := sin(walk_phase) * 0.9 * swing_amt
-	leg_l.rotation.x = s
-	leg_r.rotation.x = -s
-	arm_l.rotation = Vector3(-s * 0.8, 0, -0.15)
-	arm_r.rotation = Vector3(s * 0.8, 0, 0.15)
-	torso.rotation.x = 0.0
-	if not is_on_floor() and not flying:
-		leg_l.rotation.x = -0.7
-		leg_r.rotation.x = 0.35
-		arm_l.rotation = Vector3(-0.4, 0, -0.6)
-		arm_r.rotation = Vector3(-0.4, 0, 0.6)
+	walk_phase += hspeed * dt * 1.1 / SIZE
+	var run: float = min(1.0, hspeed / SPEED) if is_on_floor() else 0.0
+	var s := sin(walk_phase)
+	var breathe := sin(t * 2.2)
+
+	# a hunched, prowling stance: knees and elbows bent, leaning in when he runs
+	torso.rotation = Vector3(-0.12 - 0.22 * run, 0, 0)
+	torso.position.y = 1.0 - 0.04 * run * abs(cos(walk_phase))
+	chest.scale = Vector3(1.0 + 0.015 * breathe, 1.0 + 0.01 * breathe, 1.0 + 0.02 * breathe)
+	head.rotation = Vector3(0.12 + 0.18 * run, sin(t * 0.7) * 0.15 * (1.0 - run), 0)
+	leg_l.rotation = Vector3(0.12 + s * 0.85 * run, 0, -0.05)
+	leg_r.rotation = Vector3(0.12 - s * 0.85 * run, 0, 0.05)
+	shin_l.rotation.x = -0.25 - max(0.0, -cos(walk_phase)) * 1.2 * run
+	shin_r.rotation.x = -0.25 - max(0.0, cos(walk_phase)) * 1.2 * run
+	arm_l.rotation = Vector3(-s * 0.7 * run + 0.1, 0, -0.28 - 0.03 * breathe)
+	arm_r.rotation = Vector3(s * 0.7 * run + 0.1, 0, 0.28 + 0.03 * breathe)
+	fore_l.rotation.x = 0.45 + 0.4 * run
+	fore_r.rotation.x = 0.45 + 0.4 * run
+	if not is_on_floor() and not flying and not swinging:  # tucked jump pose
+		leg_l.rotation = Vector3(0.9, 0, -0.1)
+		shin_l.rotation.x = -1.4
+		leg_r.rotation = Vector3(0.2, 0, 0.1)
+		shin_r.rotation.x = -0.6
+		arm_l.rotation = Vector3(-0.5, 0, -0.75)
+		arm_r.rotation = Vector3(-0.5, 0, 0.75)
+		fore_l.rotation.x = 1.0
+		fore_r.rotation.x = 1.0
 	if flying:
 		var lean: float = clamp(hspeed / FLY_SPEED, 0.0, 1.0)
-		torso.rotation.x = -0.6 * lean
-		leg_l.rotation.x = 0.4 * lean + 0.15 * sin(t * 3.0)
-		leg_r.rotation.x = 0.5 * lean
-		arm_l.rotation = Vector3(0.3, 0, -0.5)
-		arm_r.rotation = Vector3(0.3, 0, 0.5)
+		torso.rotation.x = -0.25 - 0.6 * lean
+		leg_l.rotation = Vector3(0.3 * lean + 0.12 * sin(t * 3.0), 0, -0.08)
+		leg_r.rotation = Vector3(0.4 * lean, 0, 0.08)
+		shin_l.rotation.x = -0.5
+		shin_r.rotation.x = -0.3
+		arm_l.rotation = Vector3(0.3, 0, -0.55)
+		arm_r.rotation = Vector3(0.3, 0, 0.55)
+		head.rotation.x = 0.4 * lean
 	if swinging:
 		arm_r.rotation = Vector3(-PI + 0.2, 0, 0.1)
-	if punch_t > 0.0:
+		fore_r.rotation.x = 0.1
+		leg_l.rotation.x = 0.7
+		shin_l.rotation.x = -1.1
+	if punch_t > 0.0:  # wind up, then a huge straight right
 		var k := sin((1.0 - punch_t / 0.3) * PI)
-		arm_r.rotation = Vector3(-PI / 2 * (0.4 + 0.8 * k), 0, 0.1)
-		torso.rotation.y = -0.3 * k
+		arm_r.rotation = Vector3(-PI / 2 * (0.3 + 0.8 * k), 0, 0.1)
+		fore_r.rotation.x = 1.3 * (1.0 - k)
+		torso.rotation.y = -0.4 * k
 	else:
 		torso.rotation.y = 0.0
 	if shoot_t > 0.0:
 		arm_r.rotation = Vector3(-PI / 2, 0, 0.05)
-	(model["tongue"] as Node3D).rotation.x = sin(t * 7.0) * 0.35
-	(model["head"] as Node3D).rotation.x = -0.15 if flying else 0.0
+		fore_r.rotation.x = 0.0
+
+	# jaw opens wider when he's attacking, the tongue whips and the strands sway
+	var snarl := 0.0
+	if punch_t > 0.0 or shoot_t > 0.0 or swinging:
+		snarl = 1.0
+	(model["jaw"] as Node3D).rotation.x = 0.12 + 0.05 * sin(t * 3.0) + 0.25 * snarl
+	var segs: Array = model["tongue_segs"]
+	for i in segs.size():
+		var seg := segs[i] as Node3D
+		seg.rotation = Vector3(-0.3 + sin(t * 6.0 - i * 0.9) * 0.25, sin(t * 4.3 - i * 0.7) * 0.3, 0)
+	var strands: Array = model["strands"]
+	for i in strands.size():
+		var st := strands[i] as Node3D
+		st.rotation = Vector3(0.3 * run + sin(t * 2.5 + i) * 0.2, 0, sin(t * 3.1 + i * 1.7) * 0.2)
 
 	# wings spread while flying, fold away on landing
 	wing_open = move_toward(wing_open, 1.0 if flying else 0.0, dt * (5.0 if flying else 3.0))
@@ -411,7 +451,7 @@ func _animate(dt: float) -> void:
 	# the tendril: a wriggling black line from his hand to the anchor
 	tendril.visible = swinging
 	if swinging:
-		var a := global_position + Vector3(0, 2.4, 0) + Vector3(-sin(face_yaw), 0, -cos(face_yaw)) * 0.3
+		var a := global_position + Vector3(0, 2.4 * SIZE, 0) + Vector3(-sin(face_yaw), 0, -cos(face_yaw)) * 0.3 * SIZE
 		var b := anchor
 		var n := tendril.get_child_count()
 		var axis := (b - a).normalized()

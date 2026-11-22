@@ -71,6 +71,9 @@ func new_game() -> void:
 	world.add_child(rig)
 	rig.target = player
 	rig.exclude(player)
+	rig.height = 2.0 * Venom.SIZE
+	rig.shoulder = 1.0 * Venom.SIZE
+	rig.arm.spring_length = 6.5 * Venom.SIZE
 	player.rig = rig
 	for s in level.spawns:
 		spawn_enemy(s[0], s[1])
@@ -362,7 +365,7 @@ func _physics_process(dt: float) -> void:
 
 func _process(dt: float) -> void:
 	rig.follow(dt)
-	player.camera_close = rig.arm.get_hit_length() < 1.8
+	player.camera_close = rig.arm.get_hit_length() < 1.8 * Venom.SIZE
 
 
 func _update_arena(dt: float) -> void:
@@ -417,7 +420,7 @@ func _contact_damage() -> void:
 		var ec: Vector3 = e.center()
 		var flat := Vector2(pc.x - ec.x, pc.z - ec.z).length()
 		var top: float = e.global_position.y + e.height
-		if flat > e.radius + 0.5 or feet.y > top + 0.2 or pc.y + 1.2 < e.global_position.y:
+		if flat > e.radius + 0.5 or feet.y > top + 0.2 or pc.y + 1.2 * Venom.SIZE < e.global_position.y:
 			continue
 		if player.velocity.y < -3.0 and feet.y > top - 0.7:
 			e.hurt(15.0 if e == boss else 25.0, Vector3.ZERO, 0.0)

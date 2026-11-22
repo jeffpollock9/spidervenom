@@ -80,7 +80,7 @@ func tick(dt: float) -> void:
 					return
 	else:
 		var p = game.player
-		if not p.dead and position.distance_to(p.center()) < radius + 0.75:
+		if not p.dead and position.distance_to(p.center()) < radius + p.radius + 0.2:
 			p.take_damage(damage, position, knock)
 			kill(false)
 

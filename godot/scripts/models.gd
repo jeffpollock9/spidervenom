@@ -99,70 +99,194 @@ static func set_flash(root: Node, on: bool) -> void:
 
 # --------------------------------------------------------------------------- Venom
 
-const VENOM_BLACK := Color(0.045, 0.045, 0.065)
-const VENOM_SHEEN := Color(0.17, 0.17, 0.27)
+const VENOM_BLACK := Color(0.03, 0.03, 0.045)
+const VENOM_SHEEN := Color(0.12, 0.12, 0.2)
+## How much bigger than a person Venom is (the model is built at ~2.7 m, then scaled).
+const VENOM_SIZE := 1.4
+
+static var _skin: StandardMaterial3D
+
+
+static func venom_skin() -> StandardMaterial3D:
+	## Wet, glossy symbiote skin: clearcoat, a blue-ish rim and a bumpy organic normal map.
+	if _skin == null:
+		var m := StandardMaterial3D.new()
+		m.albedo_color = VENOM_BLACK
+		m.roughness = 0.18
+		m.metallic = 0.35
+		m.clearcoat_enabled = true
+		m.clearcoat = 1.0
+		m.clearcoat_roughness = 0.08
+		m.rim_enabled = true
+		m.rim = 0.8
+		m.rim_tint = 0.5
+		var noise := FastNoiseLite.new()
+		noise.noise_type = FastNoiseLite.TYPE_CELLULAR
+		noise.frequency = 0.035
+		noise.fractal_octaves = 3
+		var tex := NoiseTexture2D.new()
+		tex.width = 256
+		tex.height = 256
+		tex.seamless = true
+		tex.as_normal_map = true
+		tex.bump_strength = 6.0
+		tex.noise = noise
+		m.normal_enabled = true
+		m.normal_texture = tex
+		m.normal_scale = 0.6
+		m.uv1_triplanar = true
+		m.uv1_scale = Vector3(2.5, 2.5, 2.5)
+		_skin = m
+	return _skin
+
+
+static func _muscle(parent: Node3D, r: float, material: Material, pos: Vector3, scl: Vector3, rot := Vector3.ZERO) -> void:
+	part(parent, sphere(r, 14), material, pos, rot, scl)
 
 
 static func venom() -> Dictionary:
 	var root := Node3D.new()
 	root.name = "VenomModel"
-	var black := mat(VENOM_BLACK, 0.22, 0.25, 0.0, 0.7)
-	var sheen := mat(VENOM_SHEEN, 0.3, 0.2)
-	var white := mat(Color(0.96, 0.96, 1.0), 0.4, 0.0, 0.25)
-	var red := mat(Color(0.85, 0.15, 0.35), 0.4)
+	root.scale = Vector3.ONE * VENOM_SIZE
+	var black := venom_skin()
+	var sheen := mat(VENOM_SHEEN, 0.15, 0.4, 0.0, 0.9)
+	var white := mat(Color(0.97, 0.97, 1.0), 0.3, 0.0, 0.35)
+	var tooth := mat(Color(0.95, 0.93, 0.85), 0.25, 0.0, 0.1)
+	var mouth := mat(Color(0.28, 0.02, 0.06), 0.5)
+	var red := mat(Color(0.8, 0.12, 0.3), 0.15, 0.0, 0.05, 0.4)
 	var d := {"root": root}
 
-	# legs (pivots at the hips, swing about X)
+	# legs: hip -> knee -> ankle, with thick thighs and calves
 	for side: int in [-1, 1]:
-		var hip := pivot(root, Vector3(0.24 * side, 1.02, 0), "leg_l" if side < 0 else "leg_r")
-		part(hip, capsule(0.18, 1.05), black, Vector3(0, -0.5, 0))
-		part(hip, box(Vector3(0.3, 0.16, 0.48)), black, Vector3(0, -0.98, -0.08))
-		d["leg_l" if side < 0 else "leg_r"] = hip
+		var s := "l" if side < 0 else "r"
+		var hip := pivot(root, Vector3(0.27 * side, 1.08, 0.02), "leg_" + s)
+		_muscle(hip, 0.24, black, Vector3(0, -0.06, 0), Vector3(1.0, 0.9, 1.0))
+		part(hip, capsule(0.21, 0.66), black, Vector3(0, -0.28, 0), Vector3.ZERO, Vector3(1.0, 1.0, 1.1))
+		_muscle(hip, 0.17, black, Vector3(0.02 * side, -0.25, -0.1), Vector3(1.0, 1.7, 0.8))  # quad
+		var knee := pivot(hip, Vector3(0, -0.56, 0), "shin_" + s)
+		_muscle(knee, 0.15, black, Vector3.ZERO, Vector3.ONE)
+		part(knee, capsule(0.13, 0.6), black, Vector3(0, -0.25, 0))
+		_muscle(knee, 0.13, black, Vector3(0, -0.15, 0.07), Vector3(1.0, 1.8, 1.0))  # calf
+		var ankle := pivot(knee, Vector3(0, -0.5, 0), "foot_" + s)
+		_muscle(ankle, 0.13, black, Vector3(0, -0.02, -0.12), Vector3(1.1, 0.55, 1.9))
+		for c in 3:  # toe claws
+			part(ankle, cylinder(0.0, 0.035, 0.16, 6), black,
+				Vector3((c - 1) * 0.07, -0.05, -0.36), Vector3(-PI / 2 - 0.2, 0, 0))
+		d["leg_" + s] = hip
+		d["shin_" + s] = knee
 
-	# torso: a broad muscular chest
+	# torso: pelvis, narrow waist, ribbed abs, a huge V-shaped chest and back
 	var torso := pivot(root, Vector3(0, 1.0, 0), "torso")
 	d["torso"] = torso
-	part(torso, capsule(0.46, 1.15), black, Vector3(0, 0.55, 0), Vector3.ZERO, Vector3(1.2, 1.0, 0.82))
-	part(torso, sphere(0.36), sheen, Vector3(0, 0.78, -0.2), Vector3.ZERO, Vector3(1.25, 0.8, 0.5))
-	# white spider emblem: body plus legs wrapping round the chest
-	part(torso, sphere(0.12), white, Vector3(0, 0.72, -0.37), Vector3.ZERO, Vector3(0.9, 1.5, 0.4))
+	_muscle(torso, 0.3, black, Vector3(0, 0.08, 0.01), Vector3(1.15, 0.6, 0.85))  # pelvis
+	part(torso, capsule(0.33, 0.85), black, Vector3(0, 0.38, 0.02), Vector3.ZERO, Vector3(1.05, 1.0, 0.78))
+	for row in 3:  # six-pack
+		for side: int in [-1, 1]:
+			_muscle(torso, 0.085, black, Vector3(0.085 * side, 0.2 + row * 0.13, -0.2), Vector3(1.0, 0.75, 0.45))
+	var chest := pivot(torso, Vector3(0, 0.82, 0), "chest")
+	d["chest"] = chest
+	_muscle(chest, 0.5, black, Vector3(0, 0.02, 0.03), Vector3(1.22, 0.85, 0.72))
+	_muscle(chest, 0.4, black, Vector3(0, 0.22, 0.06), Vector3(1.45, 0.45, 0.75))  # broad shoulders
+	for side: int in [-1, 1]:
+		_muscle(chest, 0.25, black, Vector3(0.21 * side, 0.08, -0.2), Vector3(1.15, 0.8, 0.6))      # pec
+		_muscle(chest, 0.24, black, Vector3(0.38 * side, -0.12, 0.05), Vector3(0.7, 1.4, 1.0))      # lat
+		_muscle(chest, 0.2, black, Vector3(0.24 * side, 0.3, 0.1), Vector3(1.4, 0.7, 1.0), Vector3(0, 0, -0.4 * side))  # trap
+		_muscle(chest, 0.2, black, Vector3(0.18 * side, 0.05, 0.24), Vector3(1.0, 1.3, 0.6))       # back
+	for k in 5:  # spine ridge down the back
+		_muscle(chest, 0.05, sheen, Vector3(0, 0.25 - k * 0.17, 0.33 - k * 0.02), Vector3(1.0, 0.7, 0.6))
+	part(chest, capsule(0.19, 0.45), black, Vector3(0, 0.4, -0.03))  # neck
+	# white spider emblem: a body plus long legs wrapping round the chest and over the shoulders
+	_muscle(chest, 0.11, white, Vector3(0, 0.06, -0.35), Vector3(0.8, 1.6, 0.35))
 	for side: int in [-1, 1]:
 		for k in 4:
-			var y := 0.95 - k * 0.14
-			var ang := (0.9 - k * 0.45) * side
-			part(torso, box(Vector3(0.5, 0.045, 0.05)), white,
-				Vector3(0.24 * side, y, -0.33 + abs(k - 1.5) * 0.02), Vector3(0, -0.45 * side, ang))
+			var y := 0.28 - k * 0.14
+			var ang := (0.95 - k * 0.5) * side
+			part(chest, box(Vector3(0.56, 0.05, 0.05)), white,
+				Vector3(0.25 * side, y, -0.34 + abs(k - 1.5) * 0.03), Vector3(0, -0.5 * side, ang))
 
-	# arms (pivots at the shoulders)
+	# arms: shoulder -> elbow -> wrist, big deltoids and biceps, clawed hands
 	for side: int in [-1, 1]:
-		var sh := pivot(torso, Vector3(0.66 * side, 0.98, 0), "arm_l" if side < 0 else "arm_r")
-		part(sh, sphere(0.25), black, Vector3.ZERO)
-		part(sh, capsule(0.16, 0.95), black, Vector3(0, -0.45, 0))
-		part(sh, sphere(0.2), black, Vector3(0, -0.95, 0))
-		for c in 3:  # claws
-			part(sh, box(Vector3(0.04, 0.16, 0.04)), white, Vector3((c - 1) * 0.08, -1.13, -0.08), Vector3(0.4, 0, 0))
-		d["arm_l" if side < 0 else "arm_r"] = sh
+		var s := "l" if side < 0 else "r"
+		var sh := pivot(chest, Vector3(0.66 * side, 0.2, 0.02), "arm_" + s)
+		_muscle(sh, 0.25, black, Vector3(0.03 * side, 0.02, 0), Vector3(1.0, 0.95, 1.1))  # deltoid
+		part(sh, capsule(0.15, 0.6), black, Vector3(0, -0.3, 0))
+		_muscle(sh, 0.13, black, Vector3(0, -0.28, -0.08), Vector3(1.0, 1.7, 1.0))  # bicep
+		_muscle(sh, 0.13, black, Vector3(0, -0.25, 0.07), Vector3(1.0, 1.8, 1.0))   # tricep
+		var elbow := pivot(sh, Vector3(0, -0.58, 0), "fore_" + s)
+		part(elbow, capsule(0.12, 0.6), black, Vector3(0, -0.25, 0))
+		_muscle(elbow, 0.12, black, Vector3(0, -0.12, -0.03), Vector3(1.1, 1.6, 1.0))
+		var wrist := pivot(elbow, Vector3(0, -0.52, 0), "hand_" + s)
+		wrist.scale = Vector3.ONE * 1.45  # big hands for a big lad
+		_muscle(wrist, 0.11, black, Vector3(0, -0.06, 0), Vector3(1.0, 1.1, 0.6))
+		for f in 4:  # long fingers ending in hooked claws
+			var fx := (f - 1.5) * 0.055
+			var finger := pivot(wrist, Vector3(fx, -0.13, -0.02))
+			finger.rotation = Vector3(0.35, 0, (f - 1.5) * 0.1)
+			part(finger, cylinder(0.025, 0.03, 0.16, 6), black, Vector3(0, -0.08, 0))
+			part(finger, cylinder(0.0, 0.025, 0.14, 6), sheen, Vector3(0, -0.22, -0.03), Vector3(0.4, 0, 0))
+		var thumb := pivot(wrist, Vector3(-0.08 * side, -0.07, -0.06))
+		thumb.rotation = Vector3(0.6, 0, 0.6 * side)
+		part(thumb, cylinder(0.0, 0.03, 0.16, 6), black, Vector3(0, -0.08, 0))
+		d["arm_" + s] = sh
+		d["fore_" + s] = elbow
 
-	# head
-	var head := pivot(torso, Vector3(0, 1.38, -0.05), "head")
+	# head: a long skull, enormous jaw full of fangs, jagged white eyes
+	var head_mount := pivot(chest, Vector3(0, 0.6, -0.1))
+	head_mount.scale = Vector3.ONE * 1.25
+	var head := pivot(head_mount, Vector3.ZERO, "head")
 	d["head"] = head
-	part(head, sphere(0.37), black, Vector3.ZERO, Vector3.ZERO, Vector3(1.0, 1.05, 1.12))
-	for side: int in [-1, 1]:  # big angular white eyes
-		part(head, sphere(0.17), white, Vector3(0.16 * side, 0.08, -0.32), Vector3(0.2, 0.35 * side, 0.55 * side),
-			Vector3(1.0, 0.48, 0.25))
-	part(head, sphere(0.25), white, Vector3(0, -0.15, -0.31), Vector3(0.1, 0, 0), Vector3(1.05, 0.42, 0.3))
-	for k in 7:  # gaps between the teeth
-		part(head, box(Vector3(0.016, 0.11, 0.05)), black, Vector3(-0.21 + k * 0.07, -0.15, -0.39))
-	var tongue := pivot(head, Vector3(0, -0.2, -0.36), "tongue")
-	part(tongue, capsule(0.055, 0.5), red, Vector3(0, -0.2, -0.04), Vector3(0.3, 0, 0))
+	_muscle(head, 0.33, black, Vector3(0, 0.12, 0.02), Vector3(0.88, 0.9, 1.15))  # skull
+	_muscle(head, 0.3, black, Vector3(0, 0.0, -0.12), Vector3(0.95, 0.55, 1.0))   # upper jaw / snout
+	part(head, sphere(0.27), mouth, Vector3(0, -0.1, -0.13), Vector3.ZERO, Vector3(0.9, 0.5, 1.0))  # inside the mouth
+	for side: int in [-1, 1]:  # eyes: long jagged teardrops sweeping up and back
+		part(head, sphere(0.17), white, Vector3(0.14 * side, 0.18, -0.31),
+			Vector3(0.3, 0.45 * side, 0.6 * side), Vector3(1.3, 0.5, 0.3))
+		part(head, cylinder(0.0, 0.07, 0.26, 6), white, Vector3(0.27 * side, 0.27, -0.24),
+			Vector3(0.2, 0.55 * side, -1.05 * side), Vector3(1.0, 1.0, 0.4))
+	var teeth_upper := 15
+	for k in teeth_upper:  # upper fangs round the snout
+		var a := lerpf(-1.25, 1.25, float(k) / (teeth_upper - 1))
+		var long: float = 0.13 if abs(k - 7) in [3, 4] else 0.09 - 0.02 * abs(a)
+		part(head, cylinder(0.0, 0.026, long, 5), tooth,
+			Vector3(sin(a) * 0.27, -0.07 - long * 0.5, -0.13 - cos(a) * 0.27), Vector3(PI, 0, 0))
+	var jaw := pivot(head, Vector3(0, -0.04, 0.05), "jaw")
+	d["jaw"] = jaw
+	_muscle(jaw, 0.27, black, Vector3(0, -0.14, -0.15), Vector3(0.95, 0.42, 1.05))
+	for k in 13:  # lower fangs
+		var a := lerpf(-1.15, 1.15, float(k) / 12.0)
+		var long: float = 0.1 - 0.025 * abs(a)
+		part(jaw, cylinder(0.0, 0.024, long, 5), tooth,
+			Vector3(sin(a) * 0.25, -0.09 + long * 0.5, -0.17 - cos(a) * 0.25))
+	# the long tongue: a chain of segments that whips about
+	var tongue := pivot(jaw, Vector3(0, -0.1, -0.25), "tongue")
 	d["tongue"] = tongue
+	var segs: Array[Node3D] = []
+	var prev := tongue
+	for k in 6:
+		var seg := pivot(prev, Vector3(0, 0, -0.09) if k > 0 else Vector3.ZERO)
+		part(seg, capsule(0.05 - k * 0.006, 0.16), red, Vector3(0, 0, -0.05), Vector3(PI / 2, 0, 0), Vector3(1.4, 1.0, 0.6))
+		segs.append(seg)
+		prev = seg
+	d["tongue_segs"] = segs
+
+	# loose symbiote strands that drip and sway off his back and arms
+	var strands: Array[Node3D] = []
+	var spots: Array[Vector3] = [Vector3(0.3, 0.1, 0.28), Vector3(-0.32, 0.05, 0.26), Vector3(0.1, -0.2, 0.3),
+		Vector3(-0.15, -0.35, 0.28), Vector3(0.45, 0.2, 0.15), Vector3(-0.48, 0.18, 0.12)]
+	for p in spots:
+		var st := pivot(chest, p)
+		var len := randf_range(0.35, 0.6)
+		part(st, cylinder(0.006, 0.03, len, 5), black, Vector3(0, -len * 0.5, 0))
+		_muscle(st, 0.022, black, Vector3(0, -len, 0), Vector3(1, 1.5, 1))
+		strands.append(st)
+	d["strands"] = strands
 
 	# symbiote wings, folded away until he flies
-	var wings := pivot(torso, Vector3(0, 0.95, 0.32), "wings")
+	var wings := pivot(chest, Vector3(0, 0.15, 0.32), "wings")
 	wings.visible = false
 	d["wings"] = wings
 	for side: int in [-1, 1]:
-		var w := pivot(wings, Vector3(0.18 * side, 0, 0), "wing_l" if side < 0 else "wing_r")
+		var w := pivot(wings, Vector3(0.2 * side, 0, 0), "wing_l" if side < 0 else "wing_r")
 		w.rotation.y = 0.35 * side
 		_build_wing(w, side)
 		d["wing_l" if side < 0 else "wing_r"] = w

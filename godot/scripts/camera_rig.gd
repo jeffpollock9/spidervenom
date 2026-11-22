@@ -5,6 +5,8 @@ extends Node3D
 const SENSITIVITY := 0.0028
 
 var target: Node3D
+var height := 2.0        # how far above the target's feet the camera looks
+var shoulder := 0.9      # sideways offset, for an over-the-shoulder view
 var yaw := -PI / 2      # start looking down the street (+X)
 var pitch := -0.18
 var shake := 0.0
@@ -59,11 +61,11 @@ func right() -> Vector3:
 func follow(dt: float, snap := false) -> void:
 	if target == null:
 		return
-	var goal := target.global_position + Vector3(0, 2.0, 0)
+	var goal := target.global_position + Vector3(0, height, 0)
 	global_position = goal if snap else global_position.lerp(goal, min(1.0, 14.0 * dt))
 	rotation = Vector3(0, yaw, 0)
 	_pitch_node.rotation = Vector3(pitch, 0, 0)
-	camera.h_offset = 0.9 + _rng.randf_range(-1, 1) * shake
+	camera.h_offset = shoulder + _rng.randf_range(-1, 1) * shake
 	camera.v_offset = _rng.randf_range(-1, 1) * shake
 	shake = max(0.0, shake - 3.0 * dt)
 

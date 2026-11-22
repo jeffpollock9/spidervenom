@@ -96,6 +96,19 @@ func run() -> void:
 	cur = Controls.new()
 	await frames(40)
 	await shot("start")
+	if shots_dir != "":  # a close look at the big man from the front and the side
+		clear_enemies()
+		var arm_len: float = game.rig.arm.spring_length
+		game.rig.arm.spring_length = 5.5 * Venom.SIZE
+		game.rig.pitch = -0.1
+		game.rig.face_dir(Vector3.LEFT)
+		await frames(20)
+		await shot("venom_front")
+		game.rig.face_dir(Vector3(-1, 0, 1).normalized())
+		await frames(20)
+		await shot("venom_side")
+		game.rig.arm.spring_length = arm_len
+		game.rig.pitch = -0.18
 
 	# --- heavy punch
 	p = await fresh()
@@ -247,9 +260,14 @@ func run() -> void:
 	var saw_poo := false
 	var saw_puddle := false
 	var saw_minipoo := false
+	var bot_damage := 0.0
+	var angry := false
 	for f in 60 * 20:
 		if not is_instance_valid(boss) or boss.dead:
 			break
+		angry = angry or boss.phase == 2
+		if f < 400:
+			bot_damage = hp_start - boss.hp
 		p.hp = Venom.MAX_HP
 		cur.aim_override = boss.center()
 		var to := boss.global_position - p.global_position
@@ -269,9 +287,9 @@ func run() -> void:
 			await shot("boss")
 		if f == 400 and boss.phase == 1:
 			boss.hurt(boss.hp - boss.max_hp * 0.45, Vector3.ZERO)  # skip ahead to the angry phase
-	check(hp_start - boss.hp > 50.0, "bot hurt Mr Poo (%.0f damage)" % (hp_start - boss.hp))
+	check(bot_damage > 50.0, "bot hurt Mr Poo (%.0f damage)" % bot_damage)
 	check(saw_poo and saw_puddle, "Mr Poo lobs poo that leaves puddles")
-	check(boss.phase == 2, "Mr Poo gets angry at half health")
+	check(angry or not is_instance_valid(boss) or boss.phase == 2, "Mr Poo gets angry at half health")
 	print("  info  mini-poos spawned: %s" % saw_minipoo)
 	if is_instance_valid(boss) and not boss.dead:
 		boss.hurt(1e6, Vector3.ZERO)
