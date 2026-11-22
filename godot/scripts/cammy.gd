@@ -15,7 +15,7 @@ var slam_cd := 0.0
 
 
 func _setup() -> void:
-	hero_name = "CAMMY"
+	hero_name = "Cammy"
 	colour = Color(1.0, 0.5, 0.2)
 	size = Models.CAMMY_SIZE
 	max_hp = 260.0

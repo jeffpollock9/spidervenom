@@ -13,7 +13,7 @@ var next_deer := 0
 
 
 func _setup() -> void:
-	hero_name = "SANTA"
+	hero_name = "Santa"
 	colour = Color(1.0, 0.3, 0.3)
 	size = Models.SANTA_SIZE
 	max_hp = 150.0

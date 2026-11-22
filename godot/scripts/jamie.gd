@@ -10,7 +10,7 @@ var shield: MeshInstance3D
 
 
 func _setup() -> void:
-	hero_name = "JAMIE"
+	hero_name = "Jamie"
 	colour = Color(0.35, 1.0, 0.8)
 	size = Models.JAMIE_SIZE
 	max_hp = 100.0

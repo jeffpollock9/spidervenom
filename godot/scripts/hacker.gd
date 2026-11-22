@@ -10,7 +10,7 @@ const HACK_RANGE := 40.0
 
 
 func _setup() -> void:
-	hero_name = "HACKER"
+	hero_name = "Hacker"
 	colour = Color(0.3, 1.0, 0.45)
 	size = Models.HACKER_SIZE
 	max_hp = 90.0

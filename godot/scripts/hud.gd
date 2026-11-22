@@ -11,7 +11,7 @@ const COMMON := [
 ]
 const HERO_INFO := {
 	"venom": {
-		"title": "VENOM",
+		"title": "Venom",
 		"blurb": "A huge symbiote brute. Hits like a truck, flies on wings.",
 		"colour": Color(0.75, 0.78, 1.0),
 		"stats": [["POWER", 5], ["SPEED", 3], ["HEALTH", 4], ["SMART", 1], ["LOOKS", 1]],
@@ -24,7 +24,7 @@ const HERO_INFO := {
 		],
 	},
 	"spiderman": {
-		"title": "SPIDER-MAN",
+		"title": "Spider-Man",
 		"blurb": "Fast and nimble. The best web-swinger in Supercity.",
 		"colour": Color(1.0, 0.35, 0.35),
 		"stats": [["POWER", 2], ["SPEED", 4], ["HEALTH", 3], ["SMART", 4], ["LOOKS", 3]],
@@ -37,7 +37,7 @@ const HERO_INFO := {
 		],
 	},
 	"jamiesdad": {
-		"title": "JAMIE'S DAD",
+		"title": "Jamie's Dad",
 		"blurb": "Huge muscles, really good looking, super strong, super fast.",
 		"colour": Color(1.0, 0.82, 0.35),
 		"stats": [["POWER", 5], ["SPEED", 5], ["HEALTH", 5], ["SMART", 4], ["LOOKS", 5]],
@@ -52,7 +52,7 @@ const HERO_INFO := {
 		],
 	},
 	"jamie": {
-		"title": "JAMIE",
+		"title": "Jamie",
 		"blurb": "Invincible, very good looking, very smart, very strong.",
 		"colour": Color(0.35, 1.0, 0.8),
 		"stats": [["POWER", 4], ["SPEED", 4], ["HEALTH", 99], ["SMART", 5], ["LOOKS", 5]],
@@ -65,7 +65,7 @@ const HERO_INFO := {
 		],
 	},
 	"charley": {
-		"title": "CHARLEY",
+		"title": "Charley",
 		"blurb": "Really, really weak. But very good at calling for help.",
 		"colour": Color(1.0, 0.85, 0.3),
 		"stats": [["POWER", 0], ["SPEED", 1], ["HEALTH", 1], ["SMART", 3], ["LOOKS", 3]],
@@ -78,7 +78,7 @@ const HERO_INFO := {
 		],
 	},
 	"hacker": {
-		"title": "HACKER",
+		"title": "Hacker",
 		"blurb": "He can hack. Robots end up fighting for him.",
 		"colour": Color(0.3, 1.0, 0.45),
 		"stats": [["POWER", 2], ["SPEED", 3], ["HEALTH", 2], ["SMART", 5], ["LOOKS", 2]],
@@ -90,7 +90,7 @@ const HERO_INFO := {
 		],
 	},
 	"santa": {
-		"title": "SANTA",
+		"title": "Santa",
 		"blurb": "His reindeer come and defeat the enemies. Ho ho ho!",
 		"colour": Color(1.0, 0.3, 0.3),
 		"stats": [["POWER", 4], ["SPEED", 3], ["HEALTH", 4], ["SMART", 4], ["LOOKS", 4]],
@@ -103,7 +103,7 @@ const HERO_INFO := {
 		],
 	},
 	"cammy": {
-		"title": "CAMMY",
+		"title": "Cammy",
 		"blurb": "Really powerful and really strong. Lifts robots and throws them.",
 		"colour": Color(1.0, 0.5, 0.2),
 		"stats": [["POWER", 5], ["SPEED", 3], ["HEALTH", 5], ["SMART", 3], ["LOOKS", 3]],
@@ -186,7 +186,7 @@ func _draw() -> void:
 	# boss bar
 	var b = game.boss
 	if game.gate_closed and is_instance_valid(b) and not b.dead:
-		text(b.boss_name.to_upper(), Vector2(sz.x / 2, sz.y - 64), 28, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+		text(b.boss_name, Vector2(sz.x / 2, sz.y - 64), 28, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 		bar(Rect2(sz.x / 2 - 350, sz.y - 50, 700, 22), b.hp / b.max_hp,
 			Color(0.9, 0.15, 0.15) if b.phase == 1 else Color(1, 0.5, 0.1))
 	# message over the hero
@@ -281,7 +281,7 @@ func _draw_select(sz: Vector2) -> void:
 	var bx := 40.0
 	var by := sz.y - 110
 	text("BOSS:", Vector2(bx, by + 24), 24, Color(1, 0.9, 0.45))
-	var names := {"mrpoo": "MR POO", "cattoon": "MS CATTOON"}
+	var names := {"mrpoo": "Mr Poo", "cattoon": "Ms Cattoon"}
 	var bossx := bx + 90
 	for id in game.BOSSES:
 		var chosen: bool = id == game.boss_id

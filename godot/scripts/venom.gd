@@ -5,7 +5,7 @@ extends Hero
 
 
 func _setup() -> void:
-	hero_name = "VENOM"
+	hero_name = "Venom"
 	colour = Color(0.75, 0.78, 1.0)
 	size = Models.VENOM_SIZE
 	max_hp = 140.0

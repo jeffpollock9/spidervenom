@@ -15,7 +15,7 @@ var helper_landed := false
 
 
 func _setup() -> void:
-	hero_name = "CHARLEY"
+	hero_name = "Charley"
 	colour = Color(1.0, 0.85, 0.3)
 	size = Models.CHARLEY_SIZE
 	max_hp = 30.0

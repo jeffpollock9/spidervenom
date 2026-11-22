@@ -10,7 +10,7 @@ var twinkle_t := 2.0
 
 
 func _setup() -> void:
-	hero_name = "JAMIE'S DAD"
+	hero_name = "Jamie's Dad"
 	colour = Color(1.0, 0.82, 0.35)
 	size = Models.DAD_SIZE
 	max_hp = 300.0

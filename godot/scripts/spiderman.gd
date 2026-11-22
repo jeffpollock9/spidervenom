@@ -6,7 +6,7 @@ extends Hero
 
 
 func _setup() -> void:
-	hero_name = "SPIDER-MAN"
+	hero_name = "Spider-Man"
 	colour = Color(1.0, 0.35, 0.35)
 	size = Models.SPIDEY_SIZE
 	max_hp = 110.0
