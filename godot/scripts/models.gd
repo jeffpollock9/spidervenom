@@ -102,7 +102,7 @@ static func set_flash(root: Node, on: bool) -> void:
 const VENOM_BLACK := Color(0.03, 0.03, 0.045)
 const VENOM_SHEEN := Color(0.12, 0.12, 0.2)
 ## How much bigger than a person Venom is (the model is built at ~2.7 m, then scaled).
-const VENOM_SIZE := 1.4
+const VENOM_SIZE := 2.8  # twice the size he used to be: a 7 m monster
 
 static var _skin: StandardMaterial3D
 

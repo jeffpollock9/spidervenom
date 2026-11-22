@@ -61,7 +61,7 @@ Controls for both heroes:
 | Right click (K) | Symbiote blast | Web shot: the robot is stuck in web for a few seconds | **Thunder clap**: a shockwave through every robot in a line |
 | Shift | Swing on a tendril | Web-swing: faster, higher and cheaper | **Super-sprint** (32 m/s): anything he runs into is flattened |
 | Special | | Run into a wall to crawl up it (Space leaps off, Ctrl climbs down) | **Super health**: 300 HP, and it heals itself when he's not being hit |
-| F (full energy) | **Symbiote blast**: wipes out every robot nearby, a fifth of Mr Poo's health | **Web storm**: webs up and hurts every robot nearby, 15% of Mr Poo's health | **Dad smash**: knocks out every robot nearby, a quarter of Mr Poo's health |
+| F (full energy) | **Symbiote blast**: wipes out every robot nearby, two-fifths of Mr Poo's health | **Web storm**: webs up and hurts every robot nearby, 15% of Mr Poo's health | **Dad smash**: knocks out every robot nearby, a quarter of Mr Poo's health |
 
 **Jamie** is invincible, very good looking, very smart and very strong:
 

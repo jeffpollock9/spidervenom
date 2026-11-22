@@ -11,8 +11,9 @@ func _setup() -> void:
 	max_hp = 140.0
 	speed = 9.0
 	jump = 12.5
-	punch_damage = 20.0
-	punch_reach = 4.0
+	punch_damage = 40.0
+	punch_reach = 6.5
+	punch_knock = 24.0
 	punch_cd = 0.42
 	blast_cost = 14.0
 	swing_cost = 3.0
@@ -34,7 +35,7 @@ func special() -> void:
 	shoot_t = 0.3
 	var from := hand()
 	var dir := (aim - from).normalized()
-	game.spawn_projectile(from, dir * 34.0, "player", "symbiote", 22.0, 0.55, {"knock": 12.0, "life": 1.4})
+	game.spawn_projectile(from, dir * 34.0, "player", "symbiote", 44.0, 1.1, {"knock": 24.0, "life": 1.6})
 	game.audio.play("blob")
 
 

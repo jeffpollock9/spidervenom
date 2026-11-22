@@ -318,14 +318,14 @@ func symbiote_blast(at: Vector3) -> void:
 	for e in targets():
 		if e == boss:
 			continue
-		if e.center().distance_to(at) < 45.0:
+		if e.center().distance_to(at) < 60.0:
 			e.hurt(e.hp, e.center() - at, 14.0)
-	if boss and boss.active and not boss.dead and boss.center().distance_to(at) < 45.0:
-		boss.hurt(boss.max_hp * 0.2, Vector3.ZERO)
+	if boss and boss.active and not boss.dead and boss.center().distance_to(at) < 60.0:
+		boss.hurt(boss.max_hp * 0.4, Vector3.ZERO)
 	for i in 24:
 		var a := i * TAU / 24.0
 		var dir := Vector3(cos(a), 0.15 * sin(a * 3.0), sin(a))
-		spawn_projectile(at + dir * 1.5, dir * 30.0, "player", "symbiote", 15.0, 0.45, {"life": 1.0, "pierce": true})
+		spawn_projectile(at + dir * 3.0, dir * 30.0, "player", "symbiote", 30.0, 0.9, {"life": 1.0, "pierce": true})
 	burst(at, Color(0.05, 0.05, 0.08), 60, 18.0)
 	ground_wave_fx(at)
 	audio.play("roar")

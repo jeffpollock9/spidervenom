@@ -5,7 +5,7 @@ extends Boss
 ## that yanks you over to him. When he's angry (half health) his wings come out: he flies up
 ## and dive-bombs you, and the landing sends out a ring of symbiote you have to jump over.
 
-const SCALE := 1.8   # on top of the hero's own size: about 6.8 m tall
+const SCALE := 2.52  # the model is built ~2.7 m tall: about 6.8 m
 const SLASH_R := 8.0
 
 var was_on_floor := true
@@ -36,7 +36,7 @@ func _ready() -> void:
 	shape.position.y = height / 2
 	add_child(shape)
 	model = Models.venom()
-	(model["root"] as Node3D).scale = Vector3.ONE * Models.VENOM_SIZE * SCALE
+	(model["root"] as Node3D).scale = Vector3.ONE * SCALE
 	add_child(model["root"])
 
 

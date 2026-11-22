@@ -156,17 +156,7 @@ func run() -> void:
 	cur.aim_override = foe.center()
 	cur.primary_pressed = true
 	await frames(2)
-	check(foe.hp < foe.max_hp, "punch hurts a robot (hp %d/%d)" % [foe.hp, foe.max_hp])
-	for f in 120:  # chase it down and punch again
-		if not is_instance_valid(foe) or foe.dead:
-			break
-		cur.aim_override = foe.center()
-		var gap := foe.global_position - p.global_position
-		game.rig.face_dir(Vector3(gap.x, 0, gap.z).normalized())
-		cur.move = Vector2(0, 1) if Vector2(gap.x, gap.z).length() > 2.5 else Vector2.ZERO
-		cur.primary_pressed = Vector2(gap.x, gap.z).length() < 3.0 and p.cd <= 0.0
-		await frames(1)
-	check(not is_instance_valid(foe) or foe.dead, "two punches finish a robot")
+	check(not is_instance_valid(foe) or foe.dead, "one punch from twice-the-size Venom finishes a robot")
 	cur = Controls.new()
 	await frames(30)
 
@@ -342,6 +332,9 @@ func run() -> void:
 	await frames(160)
 	check(game.finished == "lost", "dying loses (%s)" % game.finished)
 
+	if OS.get_cmdline_user_args().has("--venom-only"):
+		_finish(t0)
+		return
 	await spiderman_tests()
 	await dad_tests()
 	await jamie_tests()
