@@ -2,6 +2,7 @@
 # Launch SpiderVenomn 3D (Godot). Downloads Godot the first time if you don't have it.
 #   ./run3d.sh              play
 #   ./run3d.sh --selftest   headless smoke test
+#   ./run3d.sh --setup      just download Godot and import the project
 set -e
 DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 GODOT_VERSION="4.7.2"
@@ -24,10 +25,13 @@ if [ ! -x "$GODOT" ]; then
     chmod +x "$GODOT"
 fi
 
+# (re)import every launch (~2s): builds the class-name cache the scripts need, and picks
+# up any new scripts after a git pull. Without it a fresh checkout can't load anything.
+"$GODOT" --headless --import --path "$DIR/godot" >/dev/null 2>&1 || true
+[ "${1:-}" = "--setup" ] && exit 0
+
 if [ "${1:-}" = "--selftest" ]; then
     shift
-    exec "$GODOT" --headless --fixed-fps 60 --path "$DIR/godot" -- --selftest "$@"
+    exec timeout 300 "$GODOT" --headless --fixed-fps 60 --path "$DIR/godot" -- --selftest "$@"
 fi
-# the first run imports the project (quick, there are no assets)
-[ -d "$DIR/godot/.godot" ] || "$GODOT" --headless --import --path "$DIR/godot" >/dev/null 2>&1 || true
 exec "$GODOT" --path "$DIR/godot" -- "$@"

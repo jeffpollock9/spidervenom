@@ -34,7 +34,12 @@ DESKTOP
 chmod +x "$APPS/spidervenomn.desktop"
 
 echo "Setting up SpiderVenomn 3D (downloads Godot the first time)..."
-"$DIR/run3d.sh" --selftest >/dev/null 2>&1 || echo "  (3D selftest failed - the 2D game is still fine)"
+"$DIR/run3d.sh" --setup
+if "$DIR/run3d.sh" --selftest > /tmp/spidervenomn-3d-selftest.log 2>&1; then
+    echo "  3D selftest passed"
+else
+    echo "  (3D selftest failed - the 2D game is still fine; see /tmp/spidervenomn-3d-selftest.log)"
+fi
 cat > "$APPS/spidervenomn-3d.desktop" <<DESKTOP
 [Desktop Entry]
 Type=Application
