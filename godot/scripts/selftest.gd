@@ -87,6 +87,10 @@ func run() -> void:
 		await venom_boss_tests()
 		_finish(t0)
 		return
+	if OS.get_cmdline_user_args().has("--lavinia-only"):
+		await lavinia_tests()
+		_finish(t0)
+		return
 	if OS.get_cmdline_user_args().has("--cammy-only"):
 		await cammy_tests()
 		_finish(t0)
@@ -342,6 +346,7 @@ func run() -> void:
 	await hacker_tests()
 	await santa_tests()
 	await cammy_tests()
+	await lavinia_tests()
 	await cattoon_tests()
 	await venom_boss_tests()
 	_finish(t0)
@@ -370,7 +375,7 @@ func spiderman_tests() -> void:
 		"hero select picks Spider-Man (%s)" % game.hero_id)
 	await shot("select")
 	var classes := {"venom": Venom, "spiderman": Spiderman, "jamiesdad": JamiesDad, "jamie": Jamie,
-		"charley": Charley, "hacker": Hacker, "santa": Santa, "cammy": Cammy}
+		"charley": Charley, "hacker": Hacker, "santa": Santa, "cammy": Cammy, "lavinia": Lavinia}
 	var n: int = game.HEROES.size()
 	var right := true
 	for i in range(2, n + 1):  # step through all of them and round to Venom again
@@ -1769,4 +1774,121 @@ func venom_boss_tests() -> void:
 	await frames(220)
 	check(game.finished == "won", "beating Venom wins (%s)" % game.finished)
 	game.boss_id = "mrpoo"
+	game.hero_id = "venom"
+
+
+func lavinia_tests() -> void:
+	print("  --- Lavinia")
+	game.state = "title"
+	game.hero_id = "lavinia"
+	game.boss_id = "mrpoo"
+	game.new_game()
+	game.open_select()
+	await frames(40)
+	await shot("lavinia_select")
+	game.start_play()
+
+	# --- looks strong, but her punch goes boing
+	var p := await fresh()
+	clear_enemies()
+	check(p is Lavinia, "playing as Lavinia")
+	var foe: Enemy = game.spawn_enemy("walker", p.global_position + Vector3(1.6, 0.3, 0))
+	await frames(3)
+	foe.daze(3.0)
+	cur.aim_override = foe.center()
+	cur.primary_pressed = true
+	await frames(3)
+	check(is_instance_valid(foe) and foe.hp < foe.max_hp and foe.hp > foe.max_hp * 0.8,
+		"her punch hardly hurts a robot (hp %d/%d)" % [foe.hp if is_instance_valid(foe) else 0, foe.max_hp if is_instance_valid(foe) else 0])
+	cur = Controls.new()
+	await frames(30)
+
+	# --- SHIFT: flex, and the robots run away scared
+	clear_enemies()
+	foe = game.spawn_enemy("walker", p.global_position + Vector3(4, 0.3, 0))
+	var other: Enemy = game.spawn_enemy("shooter", p.global_position + Vector3(6, 0.3, 3))
+	await frames(3)
+	p.energy = 100.0
+	var d0: float = foe.global_position.distance_to(p.global_position)
+	cur.alt_pressed = true
+	await frames(1)
+	cur = Controls.new()
+	await frames(10)
+	check(foe.scared_t > 0.0 and other.scared_t > 0.0 and p.flex_t > 0.0, "flexing scares the robots")
+	await shot("lavinia_flex")
+	await frames(15)
+	check(foe.global_position.distance_to(p.global_position) > d0 + 1.0, "and they back away from her (%.1f m -> %.1f m)" % [d0, foe.global_position.distance_to(p.global_position)])
+	await frames(60)
+
+	# --- RIGHT CLICK: throws her book and says something "clever"
+	p = await fresh()
+	clear_enemies()
+	foe = game.spawn_enemy("shooter", p.global_position + Vector3(8, 0.3, 0))
+	await frames(3)
+	foe.daze(3.0)
+	cur.aim_override = foe.center()
+	cur.special_pressed = true
+	await frames(2)
+	cur = Controls.new()
+	cur.aim_override = foe.center()
+	check(p.message.begins_with("Did you know?"), "she says something clever: %s" % p.message)
+	await frames(8)
+	await shot("lavinia_book")
+	await frames(40)
+	check(not is_instance_valid(foe) or foe.hp < foe.max_hp, "the book hits a robot")
+	cur = Controls.new()
+
+	# --- BRILLIANT PLAN: throw everything
+	p = await fresh()
+	clear_enemies()
+	var foes: Array = []
+	for k in 5:
+		foes.append(game.spawn_enemy("walker" if k % 2 else "shooter", p.global_position + Vector3(9 + k * 2, 0.3, -6 + k * 3)))
+	await frames(3)
+	for e in foes:
+		e.daze(5.0)
+	game.rig.face_dir(Vector3.RIGHT)
+	p.face_yaw = -PI / 2
+	p.energy = 100.0
+	cur.ult_pressed = true
+	await frames(2)
+	cur = Controls.new()
+	check((p.model["bulb"] as Node3D).visible, "BRILLIANT PLAN: a light bulb over her head")
+	await frames(12)
+	await shot("lavinia_plan")
+	await frames(90)
+	var down := 0
+	for e in foes:
+		if not is_instance_valid(e) or e.dead:
+			down += 1
+	check(down >= 4, "the brilliant plan actually works (%d/5 robots)" % down)
+
+	# --- Lavinia vs Mr Poo (it takes a while)
+	p = await fresh()
+	clear_enemies()
+	p.global_position = Vector3(275, 0.3, 0)
+	await frames(150)
+	var boss: Boss = game.boss
+	var hp_start := boss.hp
+	var damage := 0.0
+	var meh := false
+	for f in 60 * 12:
+		if not is_instance_valid(boss) or boss.dead:
+			break
+		p.hp = p.max_hp
+		cur.aim_override = boss.center()
+		var to := boss.global_position - p.global_position
+		game.rig.face_dir(Vector3(to.x, 0, to.z).normalized())
+		cur.move = Vector2(0, 1) if Vector2(to.x, to.z).length() > 10.0 else Vector2(0, -0.5)
+		cur.special_pressed = p.cd <= 0.0 and f % 30 == 0
+		cur.ult_pressed = p.energy >= 100.0
+		await frames(1)
+		if is_instance_valid(boss):
+			damage = hp_start - boss.hp
+	check(damage > 60.0, "Lavinia does manage to hurt Mr Poo (%.0f damage)" % damage)
+	if is_instance_valid(boss) and not boss.dead:
+		boss.hurt(1e6, Vector3.ZERO)
+	cur = Controls.new()
+	await frames(220)
+	check(game.finished == "won", "Lavinia saves Supercity (somehow) (%s)" % game.finished)
 	game.hero_id = "venom"

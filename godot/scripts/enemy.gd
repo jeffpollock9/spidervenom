@@ -25,6 +25,7 @@ var hacked_t := 0.0        # hacked by the Hacker: fights on your side until its
 var hack_fx: Node3D
 var attack_cd := 0.0
 var held := false          # lifted over Cammy's head: helpless
+var scared_t := 0.0        # Lavinia flexed at it: runs away
 
 
 func _init(g, k: String) -> void:
@@ -89,6 +90,12 @@ func daze(secs: float) -> void:
 	## Stops what it's doing for a moment (no web).
 	if not dead and hacked_t <= 0.0:
 		stun_t = max(stun_t, secs)
+
+
+func scare(secs: float) -> void:
+	## Runs away from the player for a while (it thinks Lavinia is really strong).
+	if not dead and hacked_t <= 0.0:
+		scared_t = max(scared_t, secs)
 
 
 func hackable() -> bool:
@@ -189,6 +196,13 @@ func tick(dt: float) -> void:
 			game.popup(center() + Vector3.UP * 1.6, "SHUT DOWN", Color(0.6, 0.6, 0.6))
 			die()
 			return
+	elif scared_t > 0.0 and stun_t <= 0.0:
+		scared_t -= dt
+		k = "scared"
+		var run := -flat.normalized() if dist > 0.1 else Vector3.RIGHT
+		dir = run
+		if is_on_floor():
+			h = h.move_toward(Vector2(run.x, run.z) * 6.0, 30.0 * dt)
 	elif stun_t > 0.0:
 		stun_t -= dt
 		k = "stuck"

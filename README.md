@@ -32,7 +32,7 @@ You can also jump on enemies' heads to squash them.
 
 ## SpiderVenomn 3D (new, work in progress)
 
-A third-person 3D version made with [Godot 4](https://godotengine.org). Pick **Venom**, **Spider-Man**, **Jamie's Dad**, **Jamie**, **Charley**, the **Hacker**, **Santa** or **Cammy** and save **Supercity** from **Mr Poo**, **Ms Cattoon** or **Venom**.
+A third-person 3D version made with [Godot 4](https://godotengine.org). Pick **Venom**, **Spider-Man**, **Jamie's Dad**, **Jamie**, **Charley**, the **Hacker**, **Santa**, **Cammy** or **Lavinia** and save **Supercity** from **Mr Poo**, **Ms Cattoon** or **Venom**.
 
 ```bash
 ./run3d.sh     # downloads Godot 4.7.2 the first time (about 60 MB), then plays
@@ -101,6 +101,13 @@ The **Hacker** can hack:
 - **Shift: lift.** He picks up the robot in front of him and holds it over his head (it can't do a thing). **Shift again** (or right click) throws it at the others, and it smashes them.
 - **Shift next to the boss: body slam.** The boss is too big to carry about, but not too big to pick up and slam down (65 damage, uses some energy).
 - **F (full energy): earthquake.** He leaps up and comes crashing down so hard the street splits. Every robot nearby is smashed and flung in the air, and the boss loses a fifth of its health.
+
+**Lavinia** looks strong, but she's not. She looks smart, but she's not. Her huge arms are blow-up ones (look for the valves), and she has big round glasses, a pencil in her ponytail and a thick clever book (held upside down).
+
+- **Left click:** a punch that goes "boing!" and hardly hurts.
+- **Right click:** throws her book, and tells everyone something clever ("Did you know? 2 + 2 = FISH!").
+- **Shift: flex.** The robots think she's really strong and run away scared. Bosses aren't fooled ("...meh.").
+- **F (full energy): brilliant plan.** A light bulb pops up over her head and she throws everything she owns: books, rubber ducks, teapots and wellies. Somehow it works.
 
 Run down the avenue between the skyscrapers. Ride the yellow sky-lifts over the two broken bits of road, or swing or fly across. Falling in costs 15 health. At the end of the street is a plaza. When you go in, the gate shuts behind you and Mr Poo wakes up. He hops at you and lobs poo that leaves slippery puddles. At half health he gets angry: he throws more poo, his landings send out shockwaves you have to jump over, and he spawns mini-poos.
 

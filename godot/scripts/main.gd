@@ -6,7 +6,7 @@ extends Node3D
 var audio: GameAudio
 var level: LevelSupercity
 var world: Node3D
-const HEROES := ["venom", "spiderman", "jamiesdad", "jamie", "charley", "hacker", "santa", "cammy"]
+const HEROES := ["venom", "spiderman", "jamiesdad", "jamie", "charley", "hacker", "santa", "cammy", "lavinia"]
 
 var player: Hero
 var hero_id := "venom"
@@ -135,6 +135,8 @@ static func make_hero(id: String, g) -> Hero:
 			return Santa.new(g)
 		"cammy":
 			return Cammy.new(g)
+		"lavinia":
+			return Lavinia.new(g)
 	return Venom.new(g)
 
 

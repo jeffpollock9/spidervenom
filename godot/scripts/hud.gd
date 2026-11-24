@@ -115,6 +115,18 @@ const HERO_INFO := {
 			["F (full energy)", "EARTHQUAKE: smash every robot nearby"],
 		],
 	},
+	"lavinia": {
+		"title": "Lavinia",
+		"blurb": "Looks strong, but she's not. Looks smart, but she's not.",
+		"colour": Color(0.8, 0.45, 1.0),
+		"stats": [["POWER", 1], ["SPEED", 3], ["HEALTH", 2], ["SMART", 0], ["LOOKS", 4]],
+		"controls": [
+			["LEFT CLICK (J)", "Punch. Her muscles are blow-up ones: boing!"],
+			["RIGHT CLICK (K)", "Throw her big clever book (and say something wrong)"],
+			["SHIFT", "FLEX: robots think she's strong and run away scared"],
+			["F (full energy)", "BRILLIANT PLAN: throw everything she owns at them"],
+		],
+	},
 }
 
 var game
@@ -252,14 +264,14 @@ func _draw_select(sz: Vector2) -> void:
 	draw_rect(Rect2(0, 0, sz.x * 0.52, sz.y), Color(0, 0, 0, 0.62))
 	text("CHOOSE YOUR HERO", Vector2(40, 62), 44, Color(1, 0.9, 0.3), HORIZONTAL_ALIGNMENT_LEFT, -1, 10)
 	var heroes: Array = game.HEROES
-	for i in heroes.size():  # tabs, two rows of four
+	for i in heroes.size():  # tabs, two rows of five
 		var info: Dictionary = HERO_INFO[heroes[i]]
 		var chosen: bool = heroes[i] == game.hero_id
-		var w := 146.0
-		var r := Rect2(40 + (i % 4) * (w + 6), 80 + (i / 4) * 42, w, 36)
+		var w := 118.0
+		var r := Rect2(40 + (i % 5) * (w + 6), 80 + (i / 5) * 42, w, 36)
 		draw_rect(r, Color(info["colour"], 0.35) if chosen else Color(0.15, 0.15, 0.2, 0.8))
 		draw_rect(r, info["colour"] if chosen else Color(0.4, 0.4, 0.5), false, 3.0 if chosen else 1.5)
-		text("%d %s" % [i + 1, info["title"]], r.position + Vector2(8, 25), 16, Color.WHITE if chosen else Color(0.7, 0.7, 0.75))
+		text("%d %s" % [i + 1, info["title"]], r.position + Vector2(7, 24), 15, Color.WHITE if chosen else Color(0.7, 0.7, 0.75))
 	var hi: Dictionary = HERO_INFO[game.hero_id]
 	text(hi["title"], Vector2(40, 218), 60, hi["colour"], HORIZONTAL_ALIGNMENT_LEFT, -1, 10)
 	text(hi["blurb"], Vector2(40, 254), 22, Color.WHITE)

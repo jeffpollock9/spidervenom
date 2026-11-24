@@ -73,6 +73,8 @@ func setup(g, pos: Vector3, v: Vector3, side: String, k: String, dmg: float, r: 
 				Vector3(0, 0, r * 1.3))
 		"boulder":
 			add_child(Models.boulder(r))
+		"junk":  # something Lavinia threw
+			add_child(Models.junk(opts.get("junk", 0)))
 		"robot":  # a robot Cammy has thrown, spinning end over end
 			var spin := Node3D.new()
 			var bot: Node3D = Models.robot(opts.get("shooter", false))["root"]
@@ -138,7 +140,7 @@ func tick(dt: float) -> void:
 		var f := vel.normalized()
 		if abs(f.dot(Vector3.UP)) < 0.99:
 			look_at(position + f, Vector3.UP)
-	if kind == "robot" or kind == "boulder":
+	if kind == "robot" or kind == "boulder" or kind == "junk":
 		(get_child(0) as Node3D).rotation.x = -age * 10.0
 	if kind == "clap":
 		scale = Vector3.ONE * (1.0 + age * 1.5)
@@ -178,6 +180,9 @@ func kill(hit_ground: bool) -> void:
 		"present":
 			game.burst(position, Color(1.0, 0.85, 0.3), 14, 7.0)
 			game.burst(position, Color(0.9, 0.15, 0.15), 10, 6.0)
+		"junk":
+			game.burst(position, Color(0.8, 0.5, 1.0), 10, 6.0)
+			game.audio.play("boing")
 		"boulder":
 			game.burst(position, Color(0.5, 0.47, 0.43), 20, 8.0)
 			game.audio.play("explode")

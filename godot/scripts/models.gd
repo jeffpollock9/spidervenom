@@ -1423,3 +1423,144 @@ static func boulder(r: float) -> Node3D:
 	part(n, box(Vector3(r * 1.3, r * 0.25, r * 1.1)), mat(Color(0.25, 0.25, 0.27), 0.9),
 		Vector3(0, r * 0.75, 0), Vector3(0.2, 0.4, 0.1))  # a slab of tarmac still stuck on top
 	return n
+
+
+# --------------------------------------------------------------------------- Lavinia
+
+const LAVINIA_SIZE := 0.66  # same skeleton, ~1.8 m
+
+
+static func lavinia() -> Dictionary:
+	## Looks strong: huge arms (they're blow-up ones, look at the valves). Looks smart: big
+	## round glasses, a pencil in her hair and a thick book (upside down).
+	var root := Node3D.new()
+	root.name = "LaviniaModel"
+	root.scale = Vector3.ONE * LAVINIA_SIZE
+	var skin := mat(Color(0.74, 0.5, 0.37), 0.6)
+	var top := mat(Color(0.55, 0.2, 0.75), 0.6, 0.0, 0.0, 0.2)
+	var leggings := mat(Color(0.1, 0.1, 0.14), 0.5)
+	var shoe := mat(Color(1.0, 0.45, 0.7), 0.45)
+	var sole := mat(Color(0.97, 0.97, 0.97), 0.5)
+	var muscle := mat(Color(0.74, 0.5, 0.37), 0.3, 0.0, 0.0, 0.15)  # a bit too shiny...
+	var valve := mat(Color(0.9, 0.9, 0.92), 0.3, 0.6)
+	var hair := mat(Color(0.3, 0.17, 0.08), 0.5, 0.0, 0.0, 0.2)
+	var white := mat(Color(1, 1, 1), 0.3)
+	var dark := mat(Color(0.06, 0.05, 0.05), 0.4)
+	var frame := mat(Color(0.08, 0.08, 0.1), 0.3, 0.3)
+	var lip := mat(Color(0.85, 0.2, 0.35), 0.4)
+	var d := {"root": root}
+
+	# legs: slim legs in black leggings, pink trainers
+	for side: int in [-1, 1]:
+		var s := "l" if side < 0 else "r"
+		var hip := pivot(root, Vector3(0.17 * side, 1.08, 0.0), "leg_" + s)
+		_muscle(hip, 0.15, leggings, Vector3(0, -0.06, 0), Vector3(1.0, 1.0, 1.0))
+		part(hip, capsule(0.12, 0.62), leggings, Vector3(0, -0.28, 0))
+		var knee := pivot(hip, Vector3(0, -0.56, 0), "shin_" + s)
+		part(knee, capsule(0.09, 0.54), leggings, Vector3(0, -0.22, 0))
+		var ankle := pivot(knee, Vector3(0, -0.5, 0), "foot_" + s)
+		_muscle(ankle, 0.11, shoe, Vector3(0, -0.01, -0.07), Vector3(1.0, 0.65, 1.9))
+		part(ankle, box(Vector3(0.2, 0.04, 0.4)), sole, Vector3(0, -0.07, -0.07))
+		d["leg_" + s] = hip
+		d["shin_" + s] = knee
+
+	# torso: a purple gym top
+	var torso := pivot(root, Vector3(0, 1.0, 0), "torso")
+	d["torso"] = torso
+	_muscle(torso, 0.22, leggings, Vector3(0, 0.06, 0), Vector3(1.1, 0.6, 0.85))
+	part(torso, capsule(0.22, 0.75), top, Vector3(0, 0.42, 0.0), Vector3.ZERO, Vector3(1.05, 1.0, 0.8))
+	var chest := pivot(torso, Vector3(0, 0.8, 0), "chest")
+	d["chest"] = chest
+	_muscle(chest, 0.3, top, Vector3(0, -0.02, 0.0), Vector3(1.15, 0.75, 0.75))
+	part(chest, capsule(0.07, 0.3), skin, Vector3(0, 0.27, -0.01))  # neck
+	part(chest, box(Vector3(0.14, 0.05, 0.02)), white, Vector3(0, 0.02, -0.225))  # "GYM" stripe
+
+	# arms: enormous muscles... with valves, because they're blow-up ones
+	for side: int in [-1, 1]:
+		var s := "l" if side < 0 else "r"
+		var sh := pivot(chest, Vector3(0.38 * side, 0.12, 0.0), "arm_" + s)
+		_muscle(sh, 0.2, muscle, Vector3(0.03 * side, 0.0, 0), Vector3(1.0, 0.95, 1.05))  # deltoid
+		part(sh, capsule(0.08, 0.6), skin, Vector3(0, -0.3, 0))
+		_muscle(sh, 0.17, muscle, Vector3(0, -0.28, -0.07), Vector3(1.1, 1.4, 1.1))  # big bicep
+		part(sh, cylinder(0.025, 0.025, 0.07, 8), valve, Vector3(0.12 * side, -0.26, -0.12),
+			Vector3(0, 0, PI / 2 * side))  # the valve you blow them up with
+		var elbow := pivot(sh, Vector3(0, -0.58, 0), "fore_" + s)
+		part(elbow, capsule(0.07, 0.52), skin, Vector3(0, -0.24, 0))
+		_muscle(elbow, 0.12, muscle, Vector3(0, -0.12, -0.02), Vector3(1.1, 1.5, 1.0))
+		var wrist := pivot(elbow, Vector3(0, -0.5, 0), "hand_" + s)
+		_muscle(wrist, 0.07, skin, Vector3(0, -0.04, 0), Vector3(1.0, 1.1, 0.7))
+		d["arm_" + s] = sh
+		d["fore_" + s] = elbow
+		d["hand_" + s] = wrist
+	# a big thick clever-looking book in her left hand (upside down)
+	var book := pivot(d["hand_l"], Vector3(0, -0.12, -0.05), "book")
+	book.rotation = Vector3(0, PI / 2, PI)
+	part(book, box(Vector3(0.36, 0.48, 0.12)), mat(Color(0.15, 0.3, 0.6), 0.6))
+	part(book, box(Vector3(0.34, 0.46, 0.13)), mat(Color(0.97, 0.95, 0.88), 0.8), Vector3(0.02, 0, 0))
+	part(book, box(Vector3(0.22, 0.05, 0.005)), mat(Color(1.0, 0.85, 0.3), 0.3, 0.6), Vector3(0, 0.12, -0.065))
+	d["book"] = book
+
+	# head: big round glasses, a smile, a high ponytail with a pencil stuck in it
+	var head := pivot(chest, Vector3(0, 0.5, -0.03), "head")
+	head.scale = Vector3.ONE * 1.15
+	d["head"] = head
+	_muscle(head, 0.2, skin, Vector3(0, 0.03, 0), Vector3(0.95, 1.08, 1.0))
+	_muscle(head, 0.14, skin, Vector3(0, -0.07, -0.04), Vector3(0.95, 0.85, 1.0))
+	for side: int in [-1, 1]:
+		_muscle(head, 0.04, skin, Vector3(0.195 * side, 0.02, 0.0), Vector3(0.45, 1.0, 0.8))  # ears
+		part(head, sphere(0.034), white, Vector3(0.072 * side, 0.05, -0.175), Vector3.ZERO, Vector3(1.1, 1.0, 0.6))
+		part(head, sphere(0.018), mat(Color(0.35, 0.22, 0.1), 0.3), Vector3(0.072 * side, 0.05, -0.197))
+		part(head, sphere(0.008), dark, Vector3(0.072 * side, 0.05, -0.207))
+		for k in 3:  # eyelashes
+			part(head, box(Vector3(0.006, 0.025, 0.004)), dark,
+				Vector3(0.072 * side + (k - 1) * 0.018, 0.09, -0.19), Vector3(0, 0, (k - 1) * 0.4))
+		var lens := TorusMesh.new()  # the big round glasses
+		lens.inner_radius = 0.058
+		lens.outer_radius = 0.07
+		part(head, lens, frame, Vector3(0.075 * side, 0.05, -0.215), Vector3(PI / 2, 0, 0))
+		part(head, cylinder(0.006, 0.006, 0.2, 6), frame, Vector3(0.15 * side, 0.06, -0.12), Vector3(PI / 2, 0, 0))
+		part(head, capsule(0.008, 0.07), hair, Vector3(0.075 * side, 0.135, -0.2), Vector3(0, 0, PI / 2 - 0.1 * side))
+	part(head, box(Vector3(0.03, 0.01, 0.01)), frame, Vector3(0, 0.055, -0.225))  # bridge of the glasses
+	_muscle(head, 0.022, skin, Vector3(0, 0.0, -0.205), Vector3(0.9, 1.0, 1.0))  # nose
+	part(head, capsule(0.014, 0.08), lip, Vector3(0, -0.075, -0.185), Vector3(0, 0, PI / 2))  # smile
+	# hair: pulled back into a high ponytail, a pencil stuck through the bobble
+	_muscle(head, 0.21, hair, Vector3(0, 0.08, 0.03), Vector3(1.03, 0.95, 1.05))
+	_muscle(head, 0.08, mat(Color(1.0, 0.45, 0.7), 0.5), Vector3(0, 0.2, 0.17), Vector3.ONE)  # bobble
+	var tail := pivot(head, Vector3(0, 0.2, 0.2), "ponytail")
+	part(tail, capsule(0.07, 0.42), hair, Vector3(0, -0.17, 0.08), Vector3(-0.35, 0, 0))
+	d["ponytail"] = tail
+	part(head, cylinder(0.012, 0.012, 0.3, 6), mat(Color(1.0, 0.8, 0.15), 0.5), Vector3(0, 0.22, 0.17),
+		Vector3(0, 0, PI / 2 - 0.3))  # pencil
+	part(head, cylinder(0.002, 0.012, 0.04, 6), mat(Color(0.2, 0.2, 0.2), 0.5), Vector3(0.15, 0.27, 0.17),
+		Vector3(0, 0, -PI / 2 - 0.3))
+	# a light bulb that pops up over her head when she has a "brilliant" idea
+	var bulb := pivot(head, Vector3(0, 0.55, 0), "bulb")
+	part(bulb, sphere(0.11), mat(Color(1.0, 0.95, 0.5), 0.2, 0.0, 3.0))
+	part(bulb, cylinder(0.05, 0.05, 0.08, 10), mat(Color(0.7, 0.7, 0.72), 0.3, 0.8), Vector3(0, -0.12, 0))
+	bulb.visible = false
+	d["bulb"] = bulb
+	return d
+
+
+static func junk(i: int) -> Node3D:
+	## Things Lavinia throws: her book, a rubber duck, a teapot, a wellington boot.
+	var n := Node3D.new()
+	match i % 4:
+		0:
+			part(n, box(Vector3(0.36, 0.48, 0.12)), mat(Color(0.15, 0.3, 0.6), 0.6))
+			part(n, box(Vector3(0.34, 0.46, 0.13)), mat(Color(0.97, 0.95, 0.88), 0.8), Vector3(0.02, 0, 0))
+		1:
+			var yellow := mat(Color(1.0, 0.85, 0.1), 0.4)
+			part(n, sphere(0.25), yellow, Vector3.ZERO, Vector3.ZERO, Vector3(1.0, 0.8, 1.3))
+			part(n, sphere(0.15), yellow, Vector3(0, 0.22, -0.18))
+			part(n, sphere(0.07), mat(Color(1.0, 0.5, 0.1), 0.4), Vector3(0, 0.2, -0.33), Vector3.ZERO, Vector3(1.2, 0.5, 1.0))
+		2:
+			var china := mat(Color(0.95, 0.95, 1.0), 0.2)
+			part(n, sphere(0.25), china, Vector3.ZERO, Vector3.ZERO, Vector3(1.0, 0.85, 1.0))
+			part(n, cylinder(0.03, 0.05, 0.25, 8), china, Vector3(0, 0.05, -0.3), Vector3(-0.8, 0, 0))
+			part(n, sphere(0.05), mat(Color(0.3, 0.5, 0.95), 0.3), Vector3(0, 0.23, 0))
+		_:
+			var green := mat(Color(0.2, 0.5, 0.2), 0.5)
+			part(n, cylinder(0.12, 0.12, 0.45, 10), green, Vector3(0, 0.1, 0))
+			part(n, box(Vector3(0.22, 0.12, 0.38)), green, Vector3(0, -0.12, -0.08))
+	return n
